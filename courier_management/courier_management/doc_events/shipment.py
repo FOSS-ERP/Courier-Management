@@ -145,3 +145,85 @@ def generate_a_parcel_series(self, api_cred):
                 "Failed to generate Docket No"
             )
         )
+
+@frappe.whitelist()
+def booking_of_shipment(doc):
+    api_cred = get_api_credentials(doc)
+    doc = frappe._dict(json.loads(doc))
+    address_doc = frappe.get_doc("Address", doc.delivery_address_name)
+    contact_doc = frappe.get_doc("Contact", doc.delivery_contact_name)
+
+    customer_email_id = address_doc.email_id or contact_doc.address_doc.city or contact_doc.email_ids[0].email_id if contact_doc.email_ids else ''
+    
+    if not customer_email_id:
+        frappe.throw("Receiver email id is not updated")
+
+    customer_mobile_no = address_doc.phone or contact_doc.phone or contact_doc.mobile_no or contact_doc.phone_nos[0].phone if contact_doc.phone_nos else ''
+    
+    if not customer_mobile_no:
+        frappe.throw("Receiver mobile no is not updated")
+    
+    payload = {
+        "custCode": api_cred.customer_code,
+        "details": [
+            {
+                "actualWt": doc.total_weight, 
+                "bookingBasis": "2", 
+                "chargedWt": 15, 
+                "codAmt": "0", 
+                "codInFavourOf": "G", 
+                "consignorGSTINNo": "", 
+                "CustDeliveyDate": "", 
+                "custVendCode": frappe.db.get_value("Address", doc.pickup_address_name, "gstin"), 
+                "declCargoVal": 23454.0,
+                "deliveryStn": "", 
+                "docketNo": doc.awb_number, 
+                "EWAYBILL": doc.ewaybill_no, 
+                "EWB_EXP_DT": "", 
+                "fromPkgNo": doc.shipment_parcel[0].parcel_series, 
+                "goodsCode": "302", 
+                "goodsDesc": doc.description_of_content, 
+                "instructions": "",
+                "locationCode": "",
+                "noOfPkgs": len(doc.shipment_parcel),
+                "orderNo": doc.shipment_delivery_note[0].delivery_note, 
+                "pkgDetails": {
+                "pkginfo": [
+                    {
+                        "pkgBr": 1,
+                        "pkgHt": 1,
+                        "pkgLn": 2,
+                        "pkgNo": 908895862, 
+                        "pkgWt": 2, 
+                        "custPkgNo":"" 
+                    },
+                    {
+                        "pkgBr": 1,
+                        "pkgHt": 1, 
+                        "pkgLn": 2, 
+                        "pkgNo":908895863, 
+                        "pkgWt": 8, 
+                        "custPkgNo":"" 
+                    }
+                ]
+                },
+                    "prodServCode": "1", 
+                    "receiverAdd1": address_doc.address_title,
+                    "receiverAdd2": address_doc.address_line1,
+                    "receiverAdd3": address_doc.address_line2,
+                    "receiverAdd4": address_doc.city,
+                    "receiverCity": address_doc.state,
+                    "receiverCode": "99999",
+                    "receiverEmail": customer_email_id,
+                    "ReceiverGSTINNo": address_doc.gstin,
+                    "receiverMobileNo": customer_mobile_no,
+                    "receiverName": frappe.db.get_value("Customer", doc.customer, "customer_name"),
+                    "receiverPhoneNo": customer_mobile_no,
+                    "receiverPinCode": address_doc.pincode,
+                    "shipperCode": api_cred.customer_code, 
+                    "toPkgNo": doc.shipment_parcel[-1].parcel_series, 
+                    "UOM": "CC" 
+                }
+            ],
+            "pickupRequest": "31-07-2025 10:23:57"
+        }

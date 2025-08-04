@@ -13,6 +13,15 @@ def setup_custom_fields():
                 "insert_after" : "shipment_delivery_note",
                 "no_copy":1                
             },
+            {
+                "fieldname" : "ewaybill_no",
+                "label" : "EwayBill No",
+                "fieldtype" : "Data",
+                "insert_after" : "carrier_service",
+            },
+            {
+                
+            }
         ],
         "Shipment Parcel": [
             {
