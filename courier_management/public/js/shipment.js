@@ -56,9 +56,32 @@ frappe.ui.form.on("Shipment", {
                     method: "courier_management.courier_management.doc_events.shipment.booking_of_shipment",
                     args:{
                         doc : frm.doc
+                    },
+                    callback(r){
+                        if (r.message){
+                            frm.refresh_field("shipment_id")
+                        }
                     }
                 })
             })
+            if(frm.doc.shipment_id && frm.doc.awb_number){
+                frm.add_custom_button(__("Docket Print"),()=>{
+                    if(!frm.doc.awb_number){
+                        frappe.throw("Docket No is not generated")
+                    }
+                    frappe.call({
+                        method: "courier_management.courier_management.doc_events.shipment.docket_printing",
+                        args:{
+                            doc : frm.doc
+                        },
+                        callback:(r)=>{
+                            if(r.message){
+                                frm.reload_doc()
+                            }
+                        }
+                    })
+                })
+            }
         }
     }
 })

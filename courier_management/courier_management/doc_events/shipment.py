@@ -291,6 +291,7 @@ def booking_of_shipment(doc):
 
             log_api_interaction(interaction_type, str(payload), service_details, status = "Completed")
             frappe.msgprint(frappe._("Successfully Booked"))
+            return True
         else:
             # Handle API-specific error messages if available
             error_message = service_details.get("message") or service_details.get("error") or "Unknown error"
@@ -368,3 +369,56 @@ def log_api_interaction(interaction_type, request_data, response_data, status = 
     })
     log.insert(ignore_permissions=True)
     frappe.db.commit()
+
+@frappe.whitelist()
+def docket_printing(doc):
+    doc = frappe._dict(json.loads(doc))
+
+    api_cred = get_api_credentials(doc)
+
+    if not doc.awb_number:
+        frappe.throw(frappe._("Docket No is not generated"))
+
+    endpoint_url = get_url(
+        f"https://pg-uat.gati.com/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
+    )
+
+    try:
+        response = requests.get(endpoint_url, timeout=10)
+        response.raise_for_status()
+        pdf_content = response.content
+
+        filename = "{0}.pdf".format(doc.name)
+
+        save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
+        return True
+    except requests.exceptions.RequestException as e:
+        frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
+        frappe.throw(
+            frappe._(
+                "Failed to generate PDF"
+            )
+        )
+
+def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder="Home"):
+    try:
+        file_doc = frappe.get_doc({
+            "doctype": "File",
+            "file_name": filename,
+            "attached_to_doctype": doctype,
+            "attached_to_name": docname,
+            "is_private": 1,  # Set to 1 if you want to restrict access
+            "folder": folder
+        })
+        
+        file_doc.content = pdf_content
+        file_doc.save(ignore_permissions=True)  # Or file_doc.insert()
+        
+        frappe.db.commit() # Important to commit the changes
+        frappe.msgprint(f"PDF '{filename}' saved successfully.")
+        return file_doc
+
+    except Exception as e:
+        frappe.log_error(f"Failed to save PDF to Frappe File: {e}", "File Save Error")
+        frappe.db.rollback()
+        return None
