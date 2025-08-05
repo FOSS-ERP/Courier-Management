@@ -49,7 +49,7 @@ frappe.ui.form.on("Shipment", {
         }
         if(!frm.is_new()){
             if(frm.doc.courier_partner && !frm.is_dirty()){
-                frm.add_custom_button(__("Request Pickep Parcel"), ()=>{
+                frm.add_custom_button(__("Request Pickup Parcel"), ()=>{
                     if(frm.is_dirty()){
                         frappe.throw("First Save the document")
                     }
