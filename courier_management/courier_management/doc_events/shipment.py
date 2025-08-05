@@ -248,7 +248,7 @@ def booking_of_shipment(doc):
                     "UOM": "CC"  # Static value
                 }
             ],
-            "pickupRequest": f"{str(doc.pickup_date)} {str(doc.pickup_from)}" # Assuming pickup_from is a field in doc
+            "pickupRequest": f"{(getdate(doc.pickup_date).strftime("%d-%m-%Y"))} {str(doc.pickup_from)[0:8]}" # Assuming pickup_from is a field in doc
         }
 
         # Construct package details list
