@@ -222,7 +222,7 @@ def booking_of_shipment(doc):
                     "docketNo": doc.awb_number,
                     "EWAYBILL": ewaybill_data.get("ewaybill"),
                     "EWB_EXP_DT": ewaybill_data.get("valid_upto"),
-                    "fromPkgNo": doc.shipment_parcel[0].parcel_series,
+                    "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  # Static value
                     "goodsDesc": doc.description_of_content,
                     "instructions": "",
@@ -244,7 +244,7 @@ def booking_of_shipment(doc):
                     "receiverPhoneNo": customer_mobile_no,
                     "receiverPinCode": address_doc.pincode,
                     "shipperCode": api_cred.customer_code,
-                    "toPkgNo": doc.shipment_parcel[-1].parcel_series,
+                    "toPkgNo": doc.shipment_parcel[-1].get("parcel_series"),
                     "UOM": "CC"  # Static value
                 }
             ],
