@@ -330,3 +330,5 @@ def get_ewaybill_no(delivery_note):
             return { "ewaybill" : ewaybill, "valid_upto":valid_upto }
         else:
             return
+    else:
+        frappe.throw(str(si_data))
