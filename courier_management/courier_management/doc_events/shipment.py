@@ -198,12 +198,6 @@ def booking_of_shipment(doc):
             frappe.throw(frappe._("Delivery Note is not linked to the shipment."))
 
         ewaybill_data = get_ewaybill_no(delivery_note_name)
-        if not ewaybill_data or not ewaybill_data.get("ewaybill"):
-            frappe.throw(
-                frappe._("E-Waybill No is not found for Delivery Note {0}").format(
-                    frappe.utils.get_link_to_form("Delivery Note", delivery_note_name)
-                )
-            )
 
         # 2. Construct Payload
         payload = {
@@ -221,7 +215,7 @@ def booking_of_shipment(doc):
                     "declCargoVal": flt(doc.value_of_goods),
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
-                    "EWAYBILL": ewaybill_data.get("ewaybill"),
+                    "EWAYBILL": ewaybill_data.get("ewaybill") or '',
                     "EWB_EXP_DT": '',
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  # Static value
@@ -334,7 +328,7 @@ def get_ewaybill_no(delivery_note):
         if ewaybill and validate_up_to:
             return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
         else:
-            return
+            return {}
     else:
         dn_doc = frappe.get_doc("Delivery Note", delivery_note)
         si_reference = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
@@ -353,7 +347,7 @@ def get_ewaybill_no(delivery_note):
             if ewaybill and validate_up_to:
                 return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
             else:
-                return
+                return {}
 
 
 def log_api_interaction(interaction_type, request_data, response_data, status = None):
