@@ -317,7 +317,7 @@ def get_ewaybill_no(delivery_note):
 
     if si_data:
         ewaybill = si_data[0].get("ewaybill")
-
+        frappe.msgprint(str(ewaybill))
         validate_up_to = frappe.db.get_value(
             "e-Waybill Log", {
                 "reference_name" : si_data[0].get("name"), 
@@ -325,7 +325,7 @@ def get_ewaybill_no(delivery_note):
                 },
                 "valid_upto"
             )
-        
+        frappe.msgprint(str(valid_upto))
         if ewaybill and valid_upto:
             return { "ewaybill" : ewaybill, "valid_upto":valid_upto }
         else:
