@@ -221,7 +221,7 @@ def booking_of_shipment(doc):
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
                     "EWAYBILL": ewaybill_data.get("ewaybill"),
-                    "EWB_EXP_DT": ewaybill_data.get("valid_upto"),
+                    "EWB_EXP_DT": str(ewaybill_data.get("valid_upto")),
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  # Static value
                     "goodsDesc": doc.description_of_content,
@@ -248,7 +248,7 @@ def booking_of_shipment(doc):
                     "UOM": "CC"  # Static value
                 }
             ],
-            "pickupRequest": f"{doc.pickup_date} {doc.pickup_from}" # Assuming pickup_from is a field in doc
+            "pickupRequest": f"{str(doc.pickup_date)} {str(doc.pickup_from)}" # Assuming pickup_from is a field in doc
         }
 
         # Construct package details list
