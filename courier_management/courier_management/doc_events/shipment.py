@@ -284,8 +284,8 @@ def booking_of_shipment(doc):
             # Assuming the response structure is something like:
             # {"status": "successful", "postedData": {"details": [...]}}
             # Let's adjust this logic to be more robust.
-            if service_details.get("postedData", {}).get("details"):
-                for row in service_details["postedData"]["details"]:
+            if service_details.get("details"):
+                for row in service_details["details"]:
                     frappe.db.set_value("Shipment", doc.name, "shipment_id", row.get("orderNo"))
             else:
                 frappe.throw(frappe._("Booking successful but 'details' not found in response."))
