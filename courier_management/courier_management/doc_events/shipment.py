@@ -211,26 +211,26 @@ def booking_of_shipment(doc):
                     "codInFavourOf": "G",  # Assuming this is a static value
                     "consignorGSTINNo": frappe.db.get_value("Address", doc.pickup_address_name, "gstin") or '',
                     "CustDeliveyDate": "",  # Empty string as per original code
-                    "custVendCode": "BLRS001",  # Static value, should it be configurable?
+                    "custVendCode": "BLRS001", 
                     "declCargoVal": flt(doc.value_of_goods),
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
                     "EWAYBILL": ewaybill_data.get("ewaybill") or '',
                     "EWB_EXP_DT": '',
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
-                    "goodsCode": "302",  # Static value
+                    "goodsCode": "302",  
                     "goodsDesc": doc.description_of_content,
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
                     "orderNo": delivery_note_name,
-                    "prodServCode": "1",  # Static value
+                    "prodServCode": "1",  
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,
                     "receiverAdd3": address_doc.address_line2,
                     "receiverAdd4": address_doc.city,
                     "receiverCity": address_doc.state,
-                    "receiverCode": "99999",  # Static value
+                    "receiverCode": "99999",  
                     "receiverEmail": customer_email_id,
                     "ReceiverGSTINNo": address_doc.gstin,
                     "receiverMobileNo": customer_mobile_no.replace(" ", ''),
@@ -239,24 +239,29 @@ def booking_of_shipment(doc):
                     "receiverPinCode": address_doc.pincode,
                     "shipperCode": api_cred.customer_code,
                     "toPkgNo": doc.shipment_parcel[-1].get("parcel_series"),
-                    "UOM": "CC"  # Static value
+                    "UOM": "CC"  
                 }
             ],
             "pickupRequest": f"{(getdate(doc.pickup_date).strftime('%d-%m-%Y'))} {str(doc.pickup_from)[0:8]}" # Assuming pickup_from is a field in doc
         }
 
+
+        pkginfo = []
         # Construct package details list
-        pkginfo = [
-            {
-                "pkgBr": flt(row.get("width")),
-                "pkgHt": flt(row.get("height")),
-                "pkgLn": flt(row.get("length")),
-                "pkgNo": int(row.get("parcel_series")),
-                "pkgWt": flt(row.get("weight")),
-                "custPkgNo": ""
-            }
-            for row in doc.shipment_parcel
-        ]
+        for row in doc.shipment_parcel:
+            if not (row.get("width")) or not row.get("height") or not row.get("length") or not row.get("weight"):
+                frappe.throw(f"Row #{row.idx} : Height, Width, Length and Weight is required for parcel booking")
+        
+            pkginfo.append(
+                {
+                    "pkgBr": flt(row.get("width")),
+                    "pkgHt": flt(row.get("height")),
+                    "pkgLn": flt(row.get("length")),
+                    "pkgNo": int(row.get("parcel_series")),
+                    "pkgWt": flt(row.get("weight")),
+                    "custPkgNo": ""
+                }
+            )
 
         payload["details"][0].update({"pkgDetails" : {"pkginfo": pkginfo}})
 

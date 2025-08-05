@@ -48,8 +48,11 @@ frappe.ui.form.on("Shipment", {
             });
         }
         if(!frm.is_new()){
-            if(frm.doc.courier_partner){
+            if(frm.doc.courier_partner && !frm.is_dirty()){
                 frm.add_custom_button(__("Request Pickep Parcel"), ()=>{
+                    if(frm.is_dirty()){
+                        frappe.throw("First Save the document")
+                    }
                     if(!frm.doc.awb_number){
                         frappe.throw("Docket No is not Generated.")
                     }
@@ -66,8 +69,11 @@ frappe.ui.form.on("Shipment", {
                     })
                 })
             }
-            if(frm.doc.shipment_id && frm.doc.awb_number){
+            if(frm.doc.shipment_id && frm.doc.awb_number && !frm.is_dirty()){
                 frm.add_custom_button(__("Docket Print"),()=>{
+                    if(frm.is_dirty()){
+                        frappe.throw("First Save the document")
+                    }
                     if(!frm.doc.awb_number){
                         frappe.throw("Docket No is not generated")
                     }
