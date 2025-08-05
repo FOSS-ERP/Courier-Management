@@ -188,8 +188,7 @@ def booking_of_shipment(doc):
             or contact_doc.mobile_no
             or (contact_doc.phone_nos[0].phone if contact_doc.phone_nos else '')
         )
-
-        frappe.throw(str(customer_mobile_no))
+        
         if not customer_mobile_no:
             frappe.throw(frappe._("Receiver mobile no is not updated in the Address or Contact."))
 
