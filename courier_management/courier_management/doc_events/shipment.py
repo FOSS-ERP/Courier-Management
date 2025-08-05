@@ -319,7 +319,7 @@ def get_ewaybill_no(delivery_note):
         ewaybill = si_data[0].get("ewaybill")
 
         validate_up_to = frappe.db.get_value(
-            "e-Waybill log", {
+            "e-Waybill Log", {
                 "reference_name" : si_data[0].get("name"), 
                 "is_cancelled":0
                 },
