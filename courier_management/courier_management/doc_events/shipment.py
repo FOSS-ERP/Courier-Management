@@ -364,3 +364,4 @@ def log_api_interaction(interaction_type, request_data, response_data):
         "output": json.dumps(response_data)
     })
     log.insert(ignore_permissions=True)
+    frappe.db.commit()
