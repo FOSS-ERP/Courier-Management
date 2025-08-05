@@ -119,7 +119,7 @@ def generate_a_parcel_series(self, api_cred):
     delivery_pincode = get_delivery_pincode(self)
 
     endpoint_url = get_url(
-        f"https://pg-uat.gati.com/pickupservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2=2&p3={encode_customer_code}&p4={delivery_pincode}"
+        f"https://pg-uat.gati.com/pickupservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
     )
     
     try:
@@ -134,7 +134,7 @@ def generate_a_parcel_series(self, api_cred):
             to_no = int(service_details.get('toNo'))
 
             series = list(range(from_no, to_no + 1))
-
+            frappe.throw(str(series))
             i = 0
             for row in self.shipment_parcel:
                 if not row.parcel_series:
