@@ -254,11 +254,11 @@ def booking_of_shipment(doc):
         # Construct package details list
         pkginfo = [
             {
-                "pkgBr": flt(row.width),
-                "pkgHt": flt(row.height),
-                "pkgLn": flt(row.length),
-                "pkgNo": row.parcel_series,
-                "pkgWt": flt(row.weight),
+                "pkgBr": flt(row.get("width")),
+                "pkgHt": flt(row.get("height")),
+                "pkgLn": flt(row.get("length")),
+                "pkgNo": row.get("parcel_series"),
+                "pkgWt": flt(row.get("weight")),
                 "custPkgNo": ""
             }
             for row in doc.shipment_parcel
