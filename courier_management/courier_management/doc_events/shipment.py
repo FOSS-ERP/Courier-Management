@@ -229,7 +229,6 @@ def booking_of_shipment(doc):
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
                     "orderNo": delivery_note_name,
-                    "pkgDetails": {},  # This key seems redundant as pkginfo is a top-level key
                     "prodServCode": "1",  # Static value
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,
