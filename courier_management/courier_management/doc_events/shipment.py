@@ -275,7 +275,8 @@ def booking_of_shipment(doc):
         response.raise_for_status()
 
         service_details = response.json()
-
+        interaction_type = "Forword Pickup Booking"
+        log_api_interaction(interaction_type, str(payload), service_details)
         # Check for successful booking and update document
         if service_details.get("postedData") == 'successful':
             # The original code seems to have a typo, `postedData` is a string
@@ -349,3 +350,17 @@ def get_ewaybill_no(delivery_note):
                 return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
             else:
                 return
+
+
+def log_api_interaction(interaction_type, request_data, response_data):
+    """Log API requests and responses for auditing"""
+    log = frappe.get_doc({
+        "doctype": "Integration Request",
+        "integration_type": "Remote",
+        "integration_request_service": "Bank POS",
+        "status": "Completed" if response_data.get("ResponseMessage") in ("APPROVED", "TXN UPLOADED") else "Failed",
+        "request_description": interaction_type,
+        "data": json.dumps(request_data),
+        "output": json.dumps(response_data)
+    })
+    log.insert(ignore_permissions=True)
