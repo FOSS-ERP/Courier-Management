@@ -6,6 +6,25 @@ def setup_custom_fields():
     custom_fields = {
         "Shipment": [
             {
+                "fieldname" : "first_section_break",
+                "label" : "Locations",
+                "fieldtype" : "Section Break",
+                "collapsible": 1
+            },
+            {
+                "fieldname" : "locations",
+                "label" : "",
+                "fieldtype" : "HTML",
+                "insert_after": "first_section_break"
+            },
+            {
+                "fieldname" : "sec_section_break",
+                "label" : "",
+                "fieldtype" : "Section Break",
+                "insert_after" : "locations",
+                "collapsible": 1
+            },
+            {
                 "fieldname" : "courier_partner",
                 "label" : "Courier Partner",
                 "fieldtype" : "Link",
@@ -19,9 +38,6 @@ def setup_custom_fields():
                 "fieldtype" : "Data",
                 "insert_after" : "carrier_service",
             },
-            {
-                
-            }
         ],
         "Shipment Parcel": [
             {

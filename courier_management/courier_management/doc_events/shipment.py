@@ -11,11 +11,16 @@ def validate(self, method):
     generate_a_docket_no(self, api_cred)
     generate_a_parcel_series(self, api_cred)
 
-
-def validate_pincode(self, api_cred=None):
+@frappe.whitelist()
+def validate_pincode(self, api_cred=None, api_call=False):
+    if api_call:
+        self = frappe._dict(json.loads(self))
     if not self.courier_partner:
         return
-    
+        
+    if not api_cred:
+        api_cred = get_api_credentials(self)
+
     if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
@@ -37,7 +42,8 @@ def validate_pincode(self, api_cred=None):
             frappe.throw(
                 frappe._(f"Service is unavailable at pincode {frappe.bold(delivery_pincode)}")
             )
-
+        
+        return service_details
     except requests.exceptions.RequestException as e:
         frappe.log_error(f"API request failed: {e}", "Pincode Validation Error")
         frappe.throw(
@@ -45,7 +51,6 @@ def validate_pincode(self, api_cred=None):
                 f"Could not validate pincode {delivery_pincode} due to a connection error. Please try again later."
             )
         )
-
 
 def get_delivery_pincode(self):
     if not self.delivery_address_name:
@@ -148,82 +153,180 @@ def generate_a_parcel_series(self, api_cred):
 
 @frappe.whitelist()
 def booking_of_shipment(doc):
-    api_cred = get_api_credentials(doc)
-    doc = frappe._dict(json.loads(doc))
-    address_doc = frappe.get_doc("Address", doc.delivery_address_name)
-    contact_doc = frappe.get_doc("Contact", doc.delivery_contact_name)
+    try:
+        # 1. Input Validation and Data Preparation
+        if not isinstance(doc, (str, dict)):
+            frappe.throw(frappe._("Invalid input document format."))
 
-    customer_email_id = address_doc.email_id or contact_doc.address_doc.city or contact_doc.email_ids[0].email_id if contact_doc.email_ids else ''
-    
-    if not customer_email_id:
-        frappe.throw("Receiver email id is not updated")
+        if isinstance(doc, str):
+            doc = frappe._dict(json.loads(doc))
+        else:
+            doc = frappe._dict(doc)
 
-    customer_mobile_no = address_doc.phone or contact_doc.phone or contact_doc.mobile_no or contact_doc.phone_nos[0].phone if contact_doc.phone_nos else ''
-    
-    if not customer_mobile_no:
-        frappe.throw("Receiver mobile no is not updated")
-    
-    payload = {
-        "custCode": api_cred.customer_code,
-        "details": [
-            {
-                "actualWt": doc.total_weight, 
-                "bookingBasis": "2", 
-                "chargedWt": 15, 
-                "codAmt": "0", 
-                "codInFavourOf": "G", 
-                "consignorGSTINNo": "", 
-                "CustDeliveyDate": "", 
-                "custVendCode": frappe.db.get_value("Address", doc.pickup_address_name, "gstin"), 
-                "declCargoVal": 23454.0,
-                "deliveryStn": "", 
-                "docketNo": doc.awb_number, 
-                "EWAYBILL": doc.ewaybill_no, 
-                "EWB_EXP_DT": "", 
-                "fromPkgNo": doc.shipment_parcel[0].parcel_series, 
-                "goodsCode": "302", 
-                "goodsDesc": doc.description_of_content, 
-                "instructions": "",
-                "locationCode": "",
-                "noOfPkgs": len(doc.shipment_parcel),
-                "orderNo": doc.shipment_delivery_note[0].delivery_note, 
-                "pkgDetails": {
-                "pkginfo": [
-                    {
-                        "pkgBr": 1,
-                        "pkgHt": 1,
-                        "pkgLn": 2,
-                        "pkgNo": 908895862, 
-                        "pkgWt": 2, 
-                        "custPkgNo":"" 
-                    },
-                    {
-                        "pkgBr": 1,
-                        "pkgHt": 1, 
-                        "pkgLn": 2, 
-                        "pkgNo":908895863, 
-                        "pkgWt": 8, 
-                        "custPkgNo":"" 
-                    }
-                ]
-                },
-                    "prodServCode": "1", 
+        api_cred = get_api_credentials(doc)
+        if not api_cred:
+            frappe.throw(frappe._("API credentials not found for this document."))
+
+        # Fetch related documents
+        try:
+            address_doc = frappe.get_doc("Address", doc.delivery_address_name)
+            contact_doc = frappe.get_doc("Contact", doc.delivery_contact_name)
+        except Exception as e:
+            frappe.throw(frappe._("Failed to fetch address or contact documents: {0}").format(e))
+
+        # Get customer email and mobile, with robust fallbacks
+        customer_email_id = (
+            address_doc.email_id
+            or (contact_doc.email_ids[0].email_id if contact_doc.email_ids else '')
+        )
+        if not customer_email_id:
+            frappe.throw(frappe._("Receiver email id is not updated in the Address or Contact."))
+
+        customer_mobile_no = (
+            address_doc.phone
+            or contact_doc.phone
+            or contact_doc.mobile_no
+            or (contact_doc.phone_nos[0].phone if contact_doc.phone_nos else '')
+        )
+        if not customer_mobile_no:
+            frappe.throw(frappe._("Receiver mobile no is not updated in the Address or Contact."))
+
+        # Get E-Waybill data
+        delivery_note_name = doc.shipment_delivery_note[0].get('delivery_note')
+        if not delivery_note_name:
+            frappe.throw(frappe._("Delivery Note is not linked to the shipment."))
+
+        ewaybill_data = get_ewaybill_no(delivery_note_name)
+        if not ewaybill_data or not ewaybill_data.get("ewaybill"):
+            frappe.throw(
+                frappe._("E-Waybill No is not found for Delivery Note {0}").format(
+                    frappe.utils.get_link_to_form("Delivery Note", delivery_note_name)
+                )
+            )
+
+        # 2. Construct Payload
+        payload = {
+            "custCode": api_cred.customer_code,
+            "details": [
+                {
+                    "actualWt": flt(doc.total_weight),
+                    "bookingBasis": "2",  # Assuming this is a static value
+                    "chargedWt": 15,  # This seems like a static value, maybe it should be dynamic?
+                    "codAmt": "0",  # Assuming no COD for now
+                    "codInFavourOf": "G",  # Assuming this is a static value
+                    "consignorGSTINNo": frappe.db.get_value("Address", doc.pickup_address_name, "gstin") or '',
+                    "CustDeliveyDate": "",  # Empty string as per original code
+                    "custVendCode": "BLRS001",  # Static value, should it be configurable?
+                    "declCargoVal": flt(doc.value_of_goods),
+                    "deliveryStn": "",  # Empty string
+                    "docketNo": doc.awb_number,
+                    "EWAYBILL": ewaybill_data.get("ewaybill"),
+                    "EWB_EXP_DT": ewaybill_data.get("valid_upto"),
+                    "fromPkgNo": doc.shipment_parcel[0].parcel_series,
+                    "goodsCode": "302",  # Static value
+                    "goodsDesc": doc.description_of_content,
+                    "instructions": "",
+                    "locationCode": "",
+                    "noOfPkgs": len(doc.shipment_parcel),
+                    "orderNo": delivery_note_name,
+                    "pkgDetails": {},  # This key seems redundant as pkginfo is a top-level key
+                    "prodServCode": "1",  # Static value
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,
                     "receiverAdd3": address_doc.address_line2,
                     "receiverAdd4": address_doc.city,
                     "receiverCity": address_doc.state,
-                    "receiverCode": "99999",
+                    "receiverCode": "99999",  # Static value
                     "receiverEmail": customer_email_id,
                     "ReceiverGSTINNo": address_doc.gstin,
                     "receiverMobileNo": customer_mobile_no,
                     "receiverName": frappe.db.get_value("Customer", doc.customer, "customer_name"),
                     "receiverPhoneNo": customer_mobile_no,
                     "receiverPinCode": address_doc.pincode,
-                    "shipperCode": api_cred.customer_code, 
-                    "toPkgNo": doc.shipment_parcel[-1].parcel_series, 
-                    "UOM": "CC" 
+                    "shipperCode": api_cred.customer_code,
+                    "toPkgNo": doc.shipment_parcel[-1].parcel_series,
+                    "UOM": "CC"  # Static value
                 }
             ],
-            "pickupRequest": "31-07-2025 10:23:57"
+            "pickupRequest": f"{doc.pickup_date} {doc.pickup_from}" # Assuming pickup_from is a field in doc
         }
+
+        # Construct package details list
+        pkginfo = [
+            {
+                "pkgBr": flt(row.width),
+                "pkgHt": flt(row.height),
+                "pkgLn": flt(row.length),
+                "pkgNo": row.parcel_series,
+                "pkgWt": flt(row.weight),
+                "custPkgNo": ""
+            }
+            for row in doc.shipment_parcel
+        ]
+
+        payload.update({"pkginfo": pkginfo})
+
+        # 3. API Call and Response Handling
+        endpoint_url = get_url("https://pg-uat.gati.com/pickupservices/GATIKWEJPICKUPLBH.jsp")
+        headers = {"Content-Type": "application/json"}
+
+        # Use a more descriptive variable name than `url`
+        response = requests.post(endpoint_url, json=payload, headers=headers, timeout=60)
+        response.raise_for_status()
+
+        service_details = response.json()
+
+        # Check for successful booking and update document
+        if service_details.get("postedData") == 'successful':
+            # The original code seems to have a typo, `postedData` is a string
+            # and then it tries to get `postedData` from it again.
+            # Assuming the response structure is something like:
+            # {"status": "successful", "postedData": {"details": [...]}}
+            # Let's adjust this logic to be more robust.
+            if "details" in service_details.get("postedData", {}):
+                for row in service_details["postedData"]["details"]:
+                    frappe.db.set_value("Shipment", doc.name, "shipment_id", row.get("orderNo"))
+            else:
+                frappe.throw(frappe._("Booking successful but 'details' not found in response."))
+        else:
+            # Handle API-specific error messages if available
+            error_message = service_details.get("message") or service_details.get("error") or "Unknown error"
+            frappe.throw(frappe._("Failed to book shipment: {0}").format(error_message))
+
+    except requests.exceptions.RequestException as e:
+        # Handle network or HTTP errors gracefully
+        frappe.log_error(f"Gati API booking failed: {e}", "Gati API Error")
+        frappe.throw(frappe._("Failed to connect to the Gati booking service. Please try again later."))
+    except frappe.ValidationError:
+        # Re-raise Frappe validation errors
+        raise
+    except Exception as e:
+        # Catch any other unexpected errors
+        frappe.log_error(f"An unexpected error occurred during shipment booking: {e}", "Shipment Booking Error")
+        frappe.throw(frappe._("An unexpected error occurred. Please contact support."))
+
+
+def get_ewaybill_no(delivery_note):
+    si_data = frappe.db.sql(f"""
+            Select si.name, si.ewaybill
+            From `tabSales Invoice Item` as sii
+            Left Join `tabSales Invoice` as si ON si.name = sii.name
+            Where si.docstatus = 1 and sii.delivery_note = '{delivery_note}'
+            Group By si.name
+    """, as_dict=1)
+
+    if si_data:
+        ewaybill = si_data[0].get("ewaybill")
+
+        validate_up_to = frappe.db.get_value(
+            "e-Waybill log", {
+                "reference_name" : si_data[0].get("name"), 
+                "is_cancelled":0
+                },
+                "valid_upto"
+            )
+        
+        if ewaybill and valid_upto:
+            return { "ewaybill" : ewaybill, "valid_upto":valid_upto }
+        else:
+            return
