@@ -290,6 +290,7 @@ def booking_of_shipment(doc):
                 frappe.throw(frappe._("Booking successful but 'details' not found in response."))
 
             log_api_interaction(interaction_type, str(payload), service_details, status = "Completed")
+            frappe.msgprint(frappe._("Successfully Booked"))
         else:
             # Handle API-specific error messages if available
             error_message = service_details.get("message") or service_details.get("error") or "Unknown error"
