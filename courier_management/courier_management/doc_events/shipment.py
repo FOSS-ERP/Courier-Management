@@ -264,7 +264,7 @@ def booking_of_shipment(doc):
             for row in doc.shipment_parcel
         ]
 
-        payload.update({"pkginfo": pkginfo})
+        payload.update({"pkgDetails" : {"pkginfo": pkginfo}})
 
         # 3. API Call and Response Handling
         endpoint_url = get_url("https://pg-uat.gati.com/pickupservices/GATIKWEJPICKUPLBH.jsp")
