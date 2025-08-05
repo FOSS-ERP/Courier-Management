@@ -325,10 +325,27 @@ def get_ewaybill_no(delivery_note):
                 },
                 "valid_upto"
             )
-        frappe.throw(str(valid_upto)+ " " + str(ewaybill))
-        if ewaybill and valid_upto:
-            return { "ewaybill" : ewaybill, "valid_upto":valid_upto }
+
+        if ewaybill and validate_up_to:
+            return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
         else:
             return
     else:
-        frappe.throw(str(si_data))
+        dn_doc = frappe.get_doc("Delivery Note", delivery_note)
+        si_reference = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
+
+        if si_reference:
+            ewaybill = frappe.db.get_value("Sales Invoice", si_reference[0], "ewaybill")
+
+            validate_up_to = frappe.db.get_value(
+                "e-Waybill Log", {
+                    "reference_name" : si_data[0].get("name"), 
+                    "is_cancelled":0
+                    },
+                    "valid_upto"
+                )
+
+            if ewaybill and validate_up_to:
+                return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
+            else:
+                return
