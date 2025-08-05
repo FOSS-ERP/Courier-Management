@@ -276,7 +276,6 @@ def booking_of_shipment(doc):
 
         service_details = response.json()
         interaction_type = "Forword Pickup Booking"
-        log_api_interaction(interaction_type, str(payload), service_details)
         # Check for successful booking and update document
         if service_details.get("postedData") == 'successful':
             # The original code seems to have a typo, `postedData` is a string
@@ -289,9 +288,12 @@ def booking_of_shipment(doc):
                     frappe.db.set_value("Shipment", doc.name, "shipment_id", row.get("orderNo"))
             else:
                 frappe.throw(frappe._("Booking successful but 'details' not found in response."))
+
+            log_api_interaction(interaction_type, str(payload), service_details, status = "Completed")
         else:
             # Handle API-specific error messages if available
             error_message = service_details.get("message") or service_details.get("error") or "Unknown error"
+            log_api_interaction(interaction_type, str(payload), service_details, status = "Failed")
             frappe.throw(frappe._("Failed to book shipment: {0}").format(error_message))
 
     except requests.exceptions.RequestException as e:
@@ -352,13 +354,13 @@ def get_ewaybill_no(delivery_note):
                 return
 
 
-def log_api_interaction(interaction_type, request_data, response_data):
+def log_api_interaction(interaction_type, request_data, response_data, status = None):
     """Log API requests and responses for auditing"""
     log = frappe.get_doc({
         "doctype": "Integration Request",
         "integration_type": "Remote",
         "integration_request_service": "Bank POS",
-        "status": "Completed" if response_data.get("ResponseMessage") in ("APPROVED", "TXN UPLOADED") else "Failed",
+        "status": status,
         "request_description": interaction_type,
         "data": json.dumps(request_data),
         "output": json.dumps(response_data)
