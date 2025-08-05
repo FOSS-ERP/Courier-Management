@@ -239,9 +239,9 @@ def booking_of_shipment(doc):
                     "receiverCode": "99999",  # Static value
                     "receiverEmail": customer_email_id,
                     "ReceiverGSTINNo": address_doc.gstin,
-                    "receiverMobileNo": customer_mobile_no,
+                    "receiverMobileNo": customer_mobile_no.replace(" ", ''),
                     "receiverName": frappe.db.get_value("Customer", doc.delivery_customer, "customer_name"),
-                    "receiverPhoneNo": customer_mobile_no,
+                    "receiverPhoneNo": customer_mobile_no.replace(" ", ''),
                     "receiverPinCode": address_doc.pincode,
                     "shipperCode": api_cred.customer_code,
                     "toPkgNo": doc.shipment_parcel[-1].get("parcel_series"),
@@ -257,14 +257,14 @@ def booking_of_shipment(doc):
                 "pkgBr": flt(row.get("width")),
                 "pkgHt": flt(row.get("height")),
                 "pkgLn": flt(row.get("length")),
-                "pkgNo": row.get("parcel_series"),
+                "pkgNo": int(row.get("parcel_series")),
                 "pkgWt": flt(row.get("weight")),
                 "custPkgNo": ""
             }
             for row in doc.shipment_parcel
         ]
 
-        payload.update({"pkgDetails" : {"pkginfo": pkginfo}})
+        payload["details"][0].update({"pkgDetails" : {"pkginfo": pkginfo}})
 
         # 3. API Call and Response Handling
         endpoint_url = get_url("https://pg-uat.gati.com/pickupservices/GATIKWEJPICKUPLBH.jsp")
