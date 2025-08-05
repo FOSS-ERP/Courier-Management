@@ -134,7 +134,7 @@ def generate_a_parcel_series(self, api_cred):
             to_no = int(service_details.get('toNo'))
 
             series = list(range(from_no, to_no + 1))
-            frappe.throw(str(series))
+
             i = 0
             for row in self.shipment_parcel:
                 if not row.parcel_series:
