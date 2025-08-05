@@ -240,7 +240,7 @@ def booking_of_shipment(doc):
                     "receiverEmail": customer_email_id,
                     "ReceiverGSTINNo": address_doc.gstin,
                     "receiverMobileNo": customer_mobile_no,
-                    "receiverName": frappe.db.get_value("Customer", doc.customer, "customer_name"),
+                    "receiverName": frappe.db.get_value("Customer", doc.delivery_customer, "customer_name"),
                     "receiverPhoneNo": customer_mobile_no,
                     "receiverPinCode": address_doc.pincode,
                     "shipperCode": api_cred.customer_code,
