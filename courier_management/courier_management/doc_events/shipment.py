@@ -389,12 +389,13 @@ def log_api_interaction(interaction_type, request_data, response_data, status = 
 
 @frappe.whitelist()
 def docket_printing(doc):
-    if not self.courier_partner:
-        return
     # 1. Input Validation and Data Preparation
   
     if isinstance(doc, str):
         doc = frappe._dict(json.loads(doc))
+
+    if not doc.courier_partner:
+        return
 
     api_cred = get_api_credentials(doc)
 
@@ -469,6 +470,9 @@ def set_default_pickup_time(doc):
 
 @frappe.whitelist()
 def cancelle_pickup_booking(doc):
+    if isinstance(doc, str):
+        doc = frappe._dict(json.loads(doc))
+        
     if not doc.courier_partner:
         return
 
