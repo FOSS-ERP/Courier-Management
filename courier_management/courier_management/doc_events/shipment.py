@@ -518,3 +518,9 @@ def cancelle_pickup_booking(doc):
                 "Failed to calcelled"
             )
         )
+
+def on_cancel(self, method):
+    if not courier_partner:
+        return
+    if not is_cancelled:
+        frappe.throw("Shipment pickup service is not cancelled.")

@@ -4,7 +4,6 @@ frappe.ui.form.on("Shipment", {
             frm.set_value("pickup_date", frappe.datetime.get_today())
         }
         if(!frm.is_new() || frm.doc.docstatus == 1){
-            console.log("hello")
             frm.call({
                 method: "courier_management.courier_management.doc_events.shipment.validate_pincode",  
                 args: {
@@ -74,7 +73,6 @@ frappe.ui.form.on("Shipment", {
                 })
             }
             if(frm.doc.shipment_id && frm.doc.awb_number && !frm.is_dirty()){
-                console.log("HRTR")
                 frm.add_custom_button(__("Docket Print"),()=>{
                     if(frm.is_dirty()){
                         frappe.throw("First Save the document")
