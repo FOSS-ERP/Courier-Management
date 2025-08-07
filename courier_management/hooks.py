@@ -140,6 +140,7 @@ after_migrate="courier_management.courier_management.setup.custom_field.setup_cu
 doc_events = {
 	"Shipment": {
 		"validate": "courier_management.courier_management.doc_events.shipment.validate",
+		"before_insert" : "courier_management.courier_management.doc_events.shipment.before_insert"
 	}
 }
 

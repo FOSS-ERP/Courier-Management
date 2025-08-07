@@ -2,14 +2,24 @@ import frappe
 import requests
 import json
 from frappe.utils.data import get_url
-from frappe.utils import flt, getdate
+from frappe.utils import flt, getdate, now_datetime, add_days
+from datetime import datetime, time
 
+
+
+def before_insert(self, method):
+    set_default_pickup_time(self)
 
 def validate(self, method):
     api_cred = get_api_credentials(self)
     validate_pincode(self, api_cred)
     generate_a_docket_no(self, api_cred)
     generate_a_parcel_series(self, api_cred)
+
+
+def on_submit(self, method):
+    booking_of_shipment(self)
+    docket_printing(self)
 
 @frappe.whitelist()
 def validate_pincode(self, api_cred=None, api_call=False):
@@ -371,7 +381,14 @@ def log_api_interaction(interaction_type, request_data, response_data, status = 
 
 @frappe.whitelist()
 def docket_printing(doc):
-    doc = frappe._dict(json.loads(doc))
+    # 1. Input Validation and Data Preparation
+    if not isinstance(doc, (str, dict)):
+        frappe.throw(frappe._("Invalid input document format."))
+
+    if isinstance(doc, str):
+        doc = frappe._dict(json.loads(doc))
+    else:
+        doc = frappe._dict(doc)
 
     api_cred = get_api_credentials(doc)
 
@@ -421,3 +438,23 @@ def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder
         frappe.log_error(f"Failed to save PDF to Frappe File: {e}", "File Save Error")
         frappe.db.rollback()
         return None
+
+def set_default_pickup_time(doc):
+    cutoff_time = time(16, 30)  # 4:30 PM
+    pickup_start_time = time(16, 30)
+    pickup_end_time = time(17, 30)
+
+    current_time = now_datetime()
+    current_time_only = current_time.time()
+
+    # Decide pickup date
+    if current_time_only < cutoff_time:
+        pickup_date = current_time.date()
+    else:
+        pickup_date = add_days(current_time.date(), 1)
+
+    # Assign values
+    doc.pickup_date = pickup_date
+    doc.pickup_from = pickup_start_time.strftime("%H:%M")
+    doc.pickup_to = pickup_end_time.strftime("%H:%M")
+
