@@ -508,11 +508,11 @@ def cancelle_pickup_booking(doc):
                 log_api_interaction(interaction_type, str(payload), response_json, status = "Completed")
 
             else:
-                frappe.throw(frappe._("Details sections is not available in response"))
                 log_api_interaction(interaction_type, str(payload), response_json, status = "Failed")
+                frappe.throw(frappe._("Details sections is not available in response"))
         else:
-            frappe.throw(frappe._("Failed to cancelled booking"))
             log_api_interaction(interaction_type, str(payload), response_json, status = "Failed")
+            frappe.throw(frappe._("Failed to cancelled booking"))
 
         return True
     except requests.exceptions.RequestException as e:
