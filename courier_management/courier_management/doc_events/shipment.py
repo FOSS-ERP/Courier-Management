@@ -168,8 +168,6 @@ def booking_of_shipment(doc):
 
         if isinstance(doc, str):
             doc = frappe._dict(json.loads(doc))
-        else:
-            doc = frappe._dict(doc)
 
         api_cred = get_api_credentials(doc)
         if not api_cred:
