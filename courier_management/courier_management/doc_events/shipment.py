@@ -472,7 +472,7 @@ def set_default_pickup_time(doc):
 def cancelle_pickup_booking(doc):
     if isinstance(doc, str):
         doc = frappe._dict(json.loads(doc))
-        
+
     if not doc.courier_partner:
         return
 
@@ -484,7 +484,7 @@ def cancelle_pickup_booking(doc):
             "details": [
                 {
                     "docketNo": doc.awb_number,
-                    "shipperCode": api_cred.awb_number,
+                    "shipperCode": api_cred.customer_code,
                     "orderNo": doc.shipment_id,
                     "canReason": "Customer Order cancel"
                 }
