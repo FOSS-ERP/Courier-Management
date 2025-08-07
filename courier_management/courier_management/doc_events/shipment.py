@@ -23,8 +23,10 @@ def on_submit(self, method):
 
 @frappe.whitelist()
 def validate_pincode(self, api_cred=None, api_call=False):
+    
     if api_call:
         self = frappe._dict(json.loads(self))
+        
     if not self.courier_partner:
         return
         
@@ -76,6 +78,8 @@ def get_api_credentials(self):
     return api_cred
 
 def generate_a_docket_no(self, api_cred=None):
+    if self.courier_partner:
+        return
     if self.awb_number:
         return
     if not self.shipment_parcel:
@@ -90,7 +94,7 @@ def generate_a_docket_no(self, api_cred=None):
     endpoint_url = get_url(
         f"https://pg-uat.gati.com/pickupservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
     )
-
+    interaction_type = "Docket No"
     try:
         response = requests.post(endpoint_url, timeout=10)
         response.raise_for_status()
@@ -100,8 +104,9 @@ def generate_a_docket_no(self, api_cred=None):
             self.awb_number = service_details.get("docketNo")
         else:
             frappe.throw("Failed to generate docket no.")
-
+        log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Completed")
     except requests.exceptions.RequestException as e:
+        log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Failed")
         frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
         frappe.throw(
             frappe._(
@@ -110,6 +115,9 @@ def generate_a_docket_no(self, api_cred=None):
         )
     
 def generate_a_parcel_series(self, api_cred):
+    if not self.courier_partner:
+        return
+
     if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
@@ -131,7 +139,7 @@ def generate_a_parcel_series(self, api_cred):
     endpoint_url = get_url(
         f"https://pg-uat.gati.com/pickupservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
     )
-    
+    interaction_type = "Parcel Series"
     try:
         response = requests.get(endpoint_url, timeout=10)
         response.raise_for_status()
@@ -150,8 +158,10 @@ def generate_a_parcel_series(self, api_cred):
                 if not row.parcel_series:
                     row.parcel_series = series[i]
                     i+=1
+            log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Completed")
         else:
             frappe.throw("Failed to package series no.")
+            log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Failed")
 
     except requests.exceptions.RequestException as e:
         frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
@@ -163,6 +173,8 @@ def generate_a_parcel_series(self, api_cred):
 
 @frappe.whitelist()
 def booking_of_shipment(doc):
+    if not self.courier_partner:
+        return
     try:
         # 1. Input Validation and Data Preparation
 
@@ -377,6 +389,8 @@ def log_api_interaction(interaction_type, request_data, response_data, status = 
 
 @frappe.whitelist()
 def docket_printing(doc):
+    if not self.courier_partner:
+        return
     # 1. Input Validation and Data Preparation
   
     if isinstance(doc, str):
@@ -390,17 +404,18 @@ def docket_printing(doc):
     endpoint_url = get_url(
         f"https://pg-uat.gati.com/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
     )
-
+    interaction_type = "Docket Printing"
     try:
         response = requests.get(endpoint_url, timeout=10)
         response.raise_for_status()
         pdf_content = response.content
 
         filename = "{0}.pdf".format(doc.name)
-
+        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
         return True
     except requests.exceptions.RequestException as e:
+        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Failed")
         frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
         frappe.throw(
             frappe._(
@@ -432,6 +447,8 @@ def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder
         return None
 
 def set_default_pickup_time(doc):
+    if not self.courier_partner:
+        return
     cutoff_time = time(16, 30)  # 4:30 PM
     pickup_start_time = time(16, 30)
     pickup_end_time = time(17, 30)
@@ -449,3 +466,55 @@ def set_default_pickup_time(doc):
     doc.pickup_date = pickup_date
     doc.pickup_from = pickup_start_time.strftime("%H:%M")
     doc.pickup_to = pickup_end_time.strftime("%H:%M")
+
+@frappe.whitelist()
+def cancelle_pickup_booking(doc):
+    if not doc.courier_partner:
+        return
+
+    api_cred = get_api_credentials(doc)
+
+    payload = {
+        "pickupRequest": f"{getdate(doc.pickup_date).strftime('%d-%m-%Y')} {doc.pickup_from}",
+        "custCode": api_cred.customer_code,
+            "details": [
+                {
+                    "docketNo": doc.awb_number,
+                    "shipperCode": api_cred.awb_number,
+                    "orderNo": doc.shipment_id,
+                    "canReason": "Customer Order cancel"
+                }
+            ]
+        }
+    
+    endpoint_url = get_url(
+        "https://pg-uat.gati.com/pickupservices/b2bCanPickup.jsp"
+    )
+
+    interaction_type = "Cancelled Pickup Booking"
+    try:
+        response = requests.post(endpoint_url, timeout=10)
+        response.raise_for_status()
+        response_json = response.json()
+
+        if(response_json["postedData"] == 'successful'):
+            if response_json['details']:
+                frappe.msgprint(response_json['details'][0].get('errmsg'))
+                frappe.db.set_value("Shipment", doc.name, "is_cancelled", 1)
+                log_api_interaction(interaction_type, str(payload), response_json, status = "Completed")
+
+            else:
+                frappe.throw(frappe._("Details sections is not available in response"))
+                log_api_interaction(interaction_type, str(payload), response_json, status = "Failed")
+        else:
+            frappe.throw(frappe._("Failed to cancelled booking"))
+            log_api_interaction(interaction_type, str(payload), response_json, status = "Failed")
+
+        return True
+    except requests.exceptions.RequestException as e:
+        frappe.log_error(f"API request failed: {e}", "Booking calcellation failed")
+        frappe.throw(
+            frappe._(
+                "Failed to calcelled"
+            )
+        )

@@ -1,5 +1,8 @@
 frappe.ui.form.on("Shipment", {
     refresh:(frm)=>{
+        if(!frm.doc.pickup_date){
+            frm.set_value("pickup_date", frappe.datetime.get_today())
+        }
         if(!frm.is_new()){
             frm.call({
                 method: "courier_management.courier_management.doc_events.shipment.validate_pincode",  
@@ -48,7 +51,7 @@ frappe.ui.form.on("Shipment", {
             });
         }
         if(!frm.is_new()){
-            if(frm.doc.courier_partner && !frm.is_dirty()){
+            if(frm.doc.courier_partner && !frm.is_dirty() && !frm.doc.shipment_id && !frm.doc.is_cancelled){
                 frm.add_custom_button(__("Request Pickup Parcel"), ()=>{
                     if(frm.is_dirty()){
                         frappe.throw("First Save the document")
@@ -63,7 +66,7 @@ frappe.ui.form.on("Shipment", {
                         },
                         callback(r){
                             if (r.message){
-                                frm.refresh_field("shipment_id")
+                                frm.refresh_fields()
                             }
                         }
                     })
@@ -85,11 +88,30 @@ frappe.ui.form.on("Shipment", {
                         callback:(r)=>{
                             if(r.message){
                                 frm.reload_doc()
+                                frm.refresh_fields()
                             }
                         }
                     })
                 })
             }
+
+        }
+        if(frm.doc.shipment_id && frm.doc.awb_number && frm.doc.status == 1){
+            frm.add_custom_button(__("Cancel Pickup"),()=>{
+                frappe.call({
+                    method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
+                    args:{
+                        doc : frm.doc
+                    },
+                    callback:(r)=>{
+                        if(r.message){
+                            frm.reload_doc()
+                            frm.refresh_fields()
+                        }
+                    }
+                })
+            })
+    
         }
     }
 })

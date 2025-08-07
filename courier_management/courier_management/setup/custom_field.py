@@ -33,11 +33,12 @@ def setup_custom_fields():
                 "no_copy":1                
             },
             {
-                "fieldname" : "ewaybill_no",
-                "label" : "EwayBill No",
-                "fieldtype" : "Data",
-                "insert_after" : "carrier_service",
-            },
+                "fieldname" : "is_cancelled",
+                "label" : "Is Pickup Booking Cancelled",
+                "fieldtype" : "Check",
+                "insert_after" : "courier_partner",
+                "read_only":1 
+            }
         ],
         "Shipment Parcel": [
             {
