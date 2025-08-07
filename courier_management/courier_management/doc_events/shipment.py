@@ -165,8 +165,6 @@ def generate_a_parcel_series(self, api_cred):
 def booking_of_shipment(doc):
     try:
         # 1. Input Validation and Data Preparation
-        if not isinstance(doc, (str, dict)):
-            frappe.throw(frappe._("Invalid input document format."))
 
         if isinstance(doc, str):
             doc = frappe._dict(json.loads(doc))
@@ -457,4 +455,3 @@ def set_default_pickup_time(doc):
     doc.pickup_date = pickup_date
     doc.pickup_from = pickup_start_time.strftime("%H:%M")
     doc.pickup_to = pickup_end_time.strftime("%H:%M")
-
