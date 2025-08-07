@@ -411,7 +411,26 @@ def docket_printing(doc):
         response.raise_for_status()
         pdf_content = response.content
 
-        filename = "{0}.pdf".format(doc.name)
+        filename = "{0}-docket.pdf".format(doc.name)
+        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
+        save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
+    except requests.exceptions.RequestException as e:
+        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Failed")
+        frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
+        frappe.throw(
+            frappe._(
+                "Failed to generate PDF"
+            )
+        )
+
+    endpoint_url = f"https://pg-uat.gati.com/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
+    label = "Label Print"
+    try:
+        response = requests.get(endpoint_url, timeout=10)
+        response.raise_for_status()
+        pdf_content = response.content
+
+        filename = "{0}-label.pdf".format(doc.name)
         log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
         return True
@@ -423,6 +442,7 @@ def docket_printing(doc):
                 "Failed to generate PDF"
             )
         )
+
 
 def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder="Home"):
     try:
@@ -440,7 +460,6 @@ def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder
         
         frappe.db.commit() # Important to commit the changes
         frappe.msgprint(f"PDF '{filename}' saved successfully.")
-        return file_doc
 
     except Exception as e:
         frappe.log_error(f"Failed to save PDF to Frappe File: {e}", "File Save Error")
