@@ -52,7 +52,7 @@ frappe.ui.form.on("Shipment", {
             });
         }
         if(!frm.is_new()){
-            if(frm.doc.courier_partner && !frm.is_dirty() && !frm.doc.shipment_id && !frm.doc.is_cancelled){
+            if(frm.doc.courier_partner && !frm.doc.shipment_id && !frm.doc.is_cancelled){
                 frm.add_custom_button(__("Request Pickup Parcel"), ()=>{
                     if(frm.is_dirty()){
                         frappe.throw("First Save the document")
@@ -73,7 +73,7 @@ frappe.ui.form.on("Shipment", {
                     })
                 })
             }
-            if(frm.doc.shipment_id && frm.doc.awb_number && !frm.is_dirty()){
+            if(frm.doc.shipment_id && frm.doc.awb_number){
                 frm.add_custom_button(__("Docket Print"),()=>{
                     if(frm.is_dirty()){
                         frappe.throw("First Save the document")
@@ -97,21 +97,20 @@ frappe.ui.form.on("Shipment", {
             }
 
         }
-        if(frm.doc.shipment_id && frm.doc.awb_number){
-            frm.add_custom_button(__("Cancel Pickup"),()=>{
-                frappe.call({
-                    method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
-                    args:{
-                        doc : frm.doc
-                    },
-                    callback:(r)=>{
-                        if(r.message){
-                            frm.reload_doc()
-                            frm.refresh_fields()
-                        }
+        
+        frm.add_custom_button(__("Cancel Pickup"),()=>{
+            frappe.call({
+                method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
+                args:{
+                    doc : frm.doc
+                },
+                callback:(r)=>{
+                    if(r.message){
+                        frm.reload_doc()
+                        frm.refresh_fields()
                     }
-                })
+                }
             })
-        }
+        }) 
     }
 })
