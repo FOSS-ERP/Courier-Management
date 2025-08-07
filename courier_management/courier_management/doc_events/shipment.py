@@ -543,7 +543,7 @@ def cancelle_pickup_booking(doc):
             )
         )
 
-def on_cancel(self, method):
+def before_cancel(self, method):
     if not self.courier_partner:
         return
     if not is_cancelled:
