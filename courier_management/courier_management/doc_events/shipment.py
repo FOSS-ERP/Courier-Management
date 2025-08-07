@@ -496,8 +496,10 @@ def cancelle_pickup_booking(doc):
     )
 
     interaction_type = "Cancelled Pickup Booking"
+    headers = {"Content-Type": "application/json"}
+
     try:
-        response = requests.post(endpoint_url, timeout=10)
+        response = requests.post(endpoint_url, json=payload, headers=headers, timeout=60)
         response.raise_for_status()
         response_json = response.json()
 
@@ -506,7 +508,6 @@ def cancelle_pickup_booking(doc):
                 frappe.msgprint(response_json['details'][0].get('errmsg'))
                 frappe.db.set_value("Shipment", doc.name, "is_cancelled", 1)
                 log_api_interaction(interaction_type, str(payload), response_json, status = "Completed")
-
             else:
                 log_api_interaction(interaction_type, str(payload), response_json, status = "Failed")
                 frappe.throw(frappe._("Details sections is not available in response"))
