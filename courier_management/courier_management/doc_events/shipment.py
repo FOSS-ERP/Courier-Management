@@ -378,13 +378,9 @@ def log_api_interaction(interaction_type, request_data, response_data, status = 
 @frappe.whitelist()
 def docket_printing(doc):
     # 1. Input Validation and Data Preparation
-    if not isinstance(doc, (str, dict)):
-        frappe.throw(frappe._("Invalid input document format."))
-
+  
     if isinstance(doc, str):
         doc = frappe._dict(json.loads(doc))
-    else:
-        doc = frappe._dict(doc)
 
     api_cred = get_api_credentials(doc)
 
