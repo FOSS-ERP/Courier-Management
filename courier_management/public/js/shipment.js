@@ -3,7 +3,7 @@ frappe.ui.form.on("Shipment", {
         if(!frm.doc.pickup_date){
             frm.set_value("pickup_date", frappe.datetime.get_today())
         }
-        if(!frm.is_new()){
+        if(!frm.is_new() || frm.doc.docstatus == 1){
             frm.call({
                 method: "courier_management.courier_management.doc_events.shipment.validate_pincode",  
                 args: {
@@ -96,7 +96,7 @@ frappe.ui.form.on("Shipment", {
             }
 
         }
-        if(frm.doc.shipment_id && frm.doc.awb_number && frm.doc.status == 1){
+        if(frm.doc.shipment_id && frm.doc.awb_number && frm.doc.docstatus == 1){
             frm.add_custom_button(__("Cancel Pickup"),()=>{
                 frappe.call({
                     method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
