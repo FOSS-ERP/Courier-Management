@@ -2,7 +2,7 @@ import frappe
 import requests
 import json
 from frappe.utils.data import get_url
-from frappe.utils import flt, getdate, now_datetime, add_days
+from frappe.utils import flt, getdate, now_datetime, add_days, get_datetime, now
 from datetime import datetime, time
 
 
@@ -12,9 +12,16 @@ def before_insert(self, method):
 
 def validate(self, method):
     api_cred = get_api_credentials(self)
+    validate_pickup_date(self)
     validate_pincode(self, api_cred)
     generate_a_docket_no(self, api_cred)
     generate_a_parcel_series(self, api_cred)
+
+def validate_pickup_date(self):
+    date_time = f"{self.pickup_date} {self.pickup_from}"
+    pickup_time = get_datetime(date_time)
+    if get_datetime(now()) > pickup_time:
+        frappe.throw("Selected Pickup date and time should not be past.")
 
 
 def on_submit(self, method):
@@ -251,9 +258,9 @@ def booking_of_shipment(doc):
                     "receiverCode": "99999",  
                     "receiverEmail": customer_email_id,
                     "ReceiverGSTINNo": address_doc.gstin,
-                    "receiverMobileNo": customer_mobile_no.replace(" ", ''),
+                    "receiverMobileNo": customer_mobile_no.replace(" ", '').replace("-", ""),
                     "receiverName": frappe.db.get_value("Customer", doc.delivery_customer, "customer_name"),
-                    "receiverPhoneNo": customer_mobile_no.replace(" ", ''),
+                    "receiverPhoneNo": customer_mobile_no.replace(" ", '').replace("-",""),
                     "receiverPinCode": address_doc.pincode,
                     "shipperCode": api_cred.customer_code,
                     "toPkgNo": doc.shipment_parcel[-1].get("parcel_series"),
@@ -467,7 +474,7 @@ def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder
         return None
 
 def set_default_pickup_time(doc):
-    if not self.courier_partner:
+    if not doc.courier_partner:
         return
     cutoff_time = time(16, 30)  # 4:30 PM
     pickup_start_time = time(16, 30)
