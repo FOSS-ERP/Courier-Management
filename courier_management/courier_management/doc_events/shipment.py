@@ -85,7 +85,7 @@ def get_api_credentials(self):
     return api_cred
 
 def generate_a_docket_no(self, api_cred=None):
-    if self.courier_partner:
+    if not self.courier_partner:
         return
     if self.awb_number:
         return
