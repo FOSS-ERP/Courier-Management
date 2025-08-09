@@ -108,7 +108,6 @@ def generate_a_docket_no(self, api_cred=None):
         service_details = response.json()
         
         if service_details.get("docketNo"):
-            frappe.throw("hello")
             self.awb_number = service_details.get("docketNo")
         else:
             frappe.throw("Failed to generate docket no.")
