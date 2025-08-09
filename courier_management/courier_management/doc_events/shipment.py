@@ -180,7 +180,7 @@ def generate_a_parcel_series(self, api_cred):
 
 @frappe.whitelist()
 def booking_of_shipment(doc):
-    if not self.courier_partner:
+    if not doc.courier_partner:
         return
     try:
         # 1. Input Validation and Data Preparation
