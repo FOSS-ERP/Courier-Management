@@ -68,27 +68,6 @@ frappe.ui.form.on("Shipment", {
             });
         }
         if(!frm.is_new()){
-            if(frm.doc.courier_partner && !frm.doc.shipment_id && !frm.doc.is_cancelled){
-                frm.add_custom_button(__("Request Pickup Parcel"), ()=>{
-                    if(frm.is_dirty()){
-                        frappe.throw("First Save the document")
-                    }
-                    if(!frm.doc.awb_number){
-                        frappe.throw("Docket No is not Generated.")
-                    }
-                    frappe.call({
-                        method: "courier_management.courier_management.doc_events.shipment.booking_of_shipment",
-                        args:{
-                            doc : frm.doc
-                        },
-                        callback(r){
-                            if (r.message){
-                                frm.refresh_fields()
-                            }
-                        }
-                    })
-                })
-            }
             if(frm.doc.shipment_id && frm.doc.awb_number){
                 frm.add_custom_button(__("Docket Print"),()=>{
                     if(frm.is_dirty()){
