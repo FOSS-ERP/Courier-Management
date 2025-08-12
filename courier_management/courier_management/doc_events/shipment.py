@@ -342,7 +342,6 @@ def get_ewaybill_no(delivery_note):
             Where si.docstatus = 1 and sii.delivery_note = '{delivery_note}'
             Group By si.name
     """, as_dict=1)
-    frappe.throw(str(si_data))
     if si_data:
         ewaybill = si_data[0].get("ewaybill")
 
@@ -361,7 +360,7 @@ def get_ewaybill_no(delivery_note):
     else:
         dn_doc = frappe.get_doc("Delivery Note", delivery_note)
         si_reference = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
-
+        frappe.throw(str(si_reference))
         if si_reference:
             ewaybill = frappe.db.get_value("Sales Invoice", si_reference[0], "ewaybill")
 
