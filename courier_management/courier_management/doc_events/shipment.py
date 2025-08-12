@@ -338,11 +338,11 @@ def get_ewaybill_no(delivery_note):
     si_data = frappe.db.sql(f"""
             Select si.name, si.ewaybill
             From `tabSales Invoice Item` as sii
-            Left Join `tabSales Invoice` as si ON si.name = sii.name
+            Left Join `tabSales Invoice` as si ON si.name = sii.parent
             Where si.docstatus = 1 and sii.delivery_note = '{delivery_note}'
             Group By si.name
     """, as_dict=1)
-    frappe.throw(str(si_data))
+
     if si_data:
         ewaybill = si_data[0].get("ewaybill")
 
