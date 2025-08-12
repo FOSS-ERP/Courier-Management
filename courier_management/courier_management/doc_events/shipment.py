@@ -30,12 +30,12 @@ def on_submit(self, method):
 
 @frappe.whitelist()
 def validate_pincode(self, api_cred=None, api_call=False):
+    if not self.courier_partner:
+        return
     
     if api_call:
         self = frappe._dict(json.loads(self))
         
-    if not self.courier_partner:
-        return
         
     if not api_cred:
         api_cred = get_api_credentials(self)
@@ -343,7 +343,7 @@ def get_ewaybill_no(delivery_note):
             Where si.docstatus = 1 and sii.delivery_note = '{delivery_note}'
             Group By si.name
     """, as_dict=1)
-
+    frappe.throw(str(si_data))
     if si_data:
         ewaybill = si_data[0].get("ewaybill")
 
