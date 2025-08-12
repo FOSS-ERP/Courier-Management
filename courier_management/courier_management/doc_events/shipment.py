@@ -29,24 +29,20 @@ def on_submit(self, method):
     docket_printing(self)
 
 @frappe.whitelist()
-def validate_pincode(self, api_cred=None, api_call=False):
-    if isinstance(self, str):
-        self = frappe._dict(json.loads(str(self)))
-
-    if not self.courier_partner:
-        return
-    
+def validate_pincode(doc, api_cred=None, api_call=False):
     if api_call:
-        self = frappe._dict(json.loads(self))
-        
+        doc = frappe._dict(json.loads(doc))
+
+    if not doc.courier_partner:
+        return
         
     if not api_cred:
-        api_cred = get_api_credentials(self)
+        api_cred = get_api_credentials(doc)
 
     if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
-    delivery_pincode = get_delivery_pincode(self)
+    delivery_pincode = get_delivery_pincode(doc)
     if not delivery_pincode:
         frappe.throw(frappe._("Delivery address is not selected or is missing a pincode."))
 
