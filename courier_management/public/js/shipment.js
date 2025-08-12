@@ -24,7 +24,7 @@ frappe.ui.form.on("Shipment", {
             frm.call({
                 method: "courier_management.courier_management.doc_events.shipment.validate_pincode",  
                 args: {
-                    self : frm.doc,
+                    doc : frm.doc,
                     api_call : true,
                 },
                 callback: function(r) {
