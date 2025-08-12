@@ -31,7 +31,7 @@ def on_submit(self, method):
 @frappe.whitelist()
 def validate_pincode(self, api_cred=None, api_call=False):
     if isinstance(self, str):
-        self = frappe._dict(json.loads(self))
+        self = frappe._dict(json.loads(str(self)))
 
     if not self.courier_partner:
         return
