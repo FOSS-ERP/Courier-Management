@@ -141,7 +141,6 @@ doc_events = {
 	"Shipment": {
 		"validate": "courier_management.courier_management.doc_events.shipment.validate",
 		"before_insert" : "courier_management.courier_management.doc_events.shipment.before_insert",
-		"on_submit" : "courier_management.courier_management.doc_events.shipment.on_submit",
 		"before_cancel" : "courier_management.courier_management.doc_events.shipment.before_cancel"
 	}
 }

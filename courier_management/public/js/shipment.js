@@ -3,7 +3,7 @@ frappe.ui.form.on("Shipment", {
         if(!frm.doc.pickup_date){
             frm.set_value("pickup_date", frappe.datetime.get_today())
         }
-        if(frm.doc.docstatus){
+        if(frm.doc.docstatus && frm.doc.shipment_id){
             frm.add_custom_button(__("Cancel Pickup"),()=>{
                 frappe.call({
                     method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
@@ -12,6 +12,29 @@ frappe.ui.form.on("Shipment", {
                     },
                     callback:(r)=>{
                         if(r.message){
+                            
+                            frm.reload_doc()
+                            frm.refresh_fields()
+                        }
+                    }
+                })
+            })
+        }
+        if(frm.doc.docstatus == 1 && frm.doc.courier_partner && !frm.doc.shipment_id){
+            console.log("hello")
+            frm.add_custom_button(__("Forword Pickup Booking"),()=>{
+                console.log("Booling stafg")
+                frappe.call({
+                    method: "courier_management.courier_management.doc_events.shipment.book_shipment",
+                    args:{
+                        doc : frm.doc
+                    },
+                    freeze: true,
+			        freeze_message:__("Booking your Parcel Shipment...."),
+                    callback:(r)=>{
+                        if(r.message){
+                            frappe.dom.unfreeze();
+                            console.log("hellojjjjjj")
                             frm.reload_doc()
                             frm.refresh_fields()
                         }

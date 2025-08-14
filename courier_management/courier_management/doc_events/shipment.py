@@ -14,8 +14,6 @@ def validate(self, method):
     api_cred = get_api_credentials(self)
     validate_pickup_date(self)
     validate_pincode(self, api_cred)
-    generate_a_docket_no(self, api_cred)
-    generate_a_parcel_series(self, api_cred)
 
 def validate_pickup_date(self):
     date_time = f"{self.pickup_date} {self.pickup_from}"
@@ -23,10 +21,18 @@ def validate_pickup_date(self):
     if get_datetime(now()) > pickup_time:
         frappe.throw("Selected Pickup date and time should not be past.")
 
+@frappe.whitelist()
+def book_shipment(doc):
+    doc = frappe._dict(json.loads(doc))
+    api_cred = get_api_credentials(doc)
+    validate_pincode(doc, api_cred)
+    DocketNO = generate_a_docket_no(doc, api_cred)
+    generate_a_parcel_series(doc, api_cred, DocketNO)
+    booking_of_shipment(doc)
+    docket_printing(doc)
 
-def on_submit(self, method):
-    booking_of_shipment(self)
-    docket_printing(self)
+    return "Booked Successfully"
+
 
 @frappe.whitelist()
 def validate_pincode(doc, api_cred=None, api_call=False):
@@ -83,21 +89,23 @@ def get_api_credentials(self):
 
     return api_cred
 
-def generate_a_docket_no(self, api_cred=None):
-    if not self.courier_partner:
+def generate_a_docket_no(doc, api_cred=None):
+    if not doc.courier_partner:
         return
-    if self.awb_number:
-        return
-    if not self.shipment_parcel:
+    
+    if doc.awb_number:
+        return doc.awb_number
+    
+    if not doc.shipment_parcel:
         frappe.throw("Please Update a shipment parcel details")
     
     if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
     
-    parcel_detail = [row for row in self.shipment_parcel if not row.parcel_series]
+    parcel_detail = [row for row in doc.get("shipment_parcel") if not row.get("parcel_series")]
 
-    endpoint_url = get_url(
+    endpoint_url = get_url( 
         f"https://pg-uat.gati.com/pickupservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
     )
     interaction_type = "Docket No"
@@ -107,7 +115,9 @@ def generate_a_docket_no(self, api_cred=None):
         service_details = response.json()
         
         if service_details.get("docketNo"):
-            self.awb_number = service_details.get("docketNo")
+            DocketNO = service_details.get("docketNo")
+            frappe.db.set_value("Shipment", doc.name, "awb_number", DocketNO)
+            return DocketNO
         else:
             frappe.throw("Failed to generate docket no.")
         log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Completed")
@@ -120,27 +130,27 @@ def generate_a_docket_no(self, api_cred=None):
             )
         )
     
-def generate_a_parcel_series(self, api_cred):
-    if not self.courier_partner:
+def generate_a_parcel_series(doc, api_cred, DocketNO):
+    if not doc.courier_partner:
         return
 
     if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
-    if not self.shipment_parcel:
+    if not doc.shipment_parcel:
         frappe.throw("Please Update a shipment parcel details")
 
 
-    no_of_parcel = len([ row for row in self.shipment_parcel if not row.parcel_series ])
+    no_of_parcel = len([ row for row in doc.shipment_parcel if not row.get("parcel_series") ])
     if not no_of_parcel:
         return
     
-    if not self.awb_number:
+    if not DocketNO:
         frappe.throw(frappe._("Docket No is not Generated"))
 
-    DOCKET_NO = self.awb_number
+    DOCKET_NO = DocketNO
     encode_customer_code = api_cred.get_password("encode_customer_code")
-    delivery_pincode = get_delivery_pincode(self)
+    delivery_pincode = get_delivery_pincode(doc)
 
     endpoint_url = get_url(
         f"https://pg-uat.gati.com/pickupservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
@@ -152,7 +162,7 @@ def generate_a_parcel_series(self, api_cred):
         service_details = response.json()
 
         if service_details.get("result") == "successful":
-            self.awb_number = service_details.get("docketNo")
+            doc.awb_number = service_details.get("docketNo")
             
             from_no = int(service_details.get('frmNo'))
             to_no = int(service_details.get('toNo'))
@@ -160,9 +170,9 @@ def generate_a_parcel_series(self, api_cred):
             series = list(range(from_no, to_no + 1))
 
             i = 0
-            for row in self.shipment_parcel:
-                if not row.parcel_series:
-                    row.parcel_series = series[i]
+            for row in doc.shipment_parcel:
+                if not row.get("parcel_series"):
+                    frappe.db.set_value(row.get("doctype"), row.get("name"), "parcel_series", series[i])
                     i+=1
             log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Completed")
         else:
@@ -179,6 +189,8 @@ def generate_a_parcel_series(self, api_cred):
 
 @frappe.whitelist()
 def booking_of_shipment(doc):
+    doc = frappe.get_doc(doc.get("doctype"), doc.get("name"))
+
     if not doc.courier_partner:
         return
     try:
@@ -384,7 +396,7 @@ def log_api_interaction(interaction_type, request_data, response_data, status = 
     log = frappe.get_doc({
         "doctype": "Integration Request",
         "integration_type": "Remote",
-        "integration_request_service": "Bank POS",
+        "integration_request_service": "Courier Booking",
         "status": status,
         "request_description": interaction_type,
         "data": json.dumps(request_data),
@@ -413,10 +425,11 @@ def docket_printing(doc):
     )
     interaction_type = "Docket Printing"
     try:
+        import time
+        time.sleep(3)
         response = requests.get(endpoint_url, timeout=10)
         response.raise_for_status()
         pdf_content = response.content
-
         filename = "{0}-docket.pdf".format(doc.name)
         log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
@@ -438,6 +451,7 @@ def docket_printing(doc):
 
         filename = "{0}-label.pdf".format(doc.name)
         log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
+        
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
         return True
     except requests.exceptions.RequestException as e:
