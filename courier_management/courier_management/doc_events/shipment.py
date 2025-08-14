@@ -23,12 +23,17 @@ def validate_pickup_date(self):
 
 @frappe.whitelist()
 def book_shipment(doc):
+    import time
     doc = frappe._dict(json.loads(doc))
     api_cred = get_api_credentials(doc)
     validate_pincode(doc, api_cred)
+    time.sleep(2)
     DocketNO = generate_a_docket_no(doc, api_cred)
+    time.sleep(2)
     generate_a_parcel_series(doc, api_cred, DocketNO)
+    time.sleep(2)
     booking_of_shipment(doc)
+    time.sleep(2)
     docket_printing(doc)
 
     return "Booked Successfully"
