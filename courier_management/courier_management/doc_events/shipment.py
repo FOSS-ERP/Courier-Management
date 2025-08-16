@@ -571,5 +571,5 @@ def cancelle_pickup_booking(doc):
 def before_cancel(self, method):
     if not self.courier_partner:
         return
-    if not is_cancelled:
+    if not self.is_cancelled:
         frappe.throw("Shipment pickup service is not cancelled.")
