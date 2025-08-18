@@ -240,9 +240,6 @@ def booking_of_shipment(doc):
 
         ewaybill_data = get_ewaybill_no(delivery_note_name)
 
-        if not ewaybill_data and doc.value_of_goods > 50000:
-            frappe.throw(frappe._("An E-way Bill isn't generated. It's required for goods valued over 50,000."))
-
         # 2. Construct Payload
         payload = {
             "custCode": api_cred.customer_code,
@@ -573,6 +570,8 @@ def cancelle_pickup_booking(doc):
 
 def before_cancel(self, method):
     if not self.courier_partner:
+        return
+    if not (self.shipment_id or self.awb_number)
         return
     if not self.is_cancelled:
         frappe.throw("Shipment pickup service is not cancelled.")
