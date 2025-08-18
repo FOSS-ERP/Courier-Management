@@ -239,7 +239,7 @@ def booking_of_shipment(doc):
             frappe.throw(frappe._("Delivery Note is not linked to the shipment."))
 
         ewaybill_data = get_ewaybill_no(delivery_note_name)
-
+        order_no = ewaybill_data.get("sales_invoice") or delivery_note_name
         # 2. Construct Payload
         payload = {
             "custCode": api_cred.customer_code,
@@ -256,15 +256,15 @@ def booking_of_shipment(doc):
                     "declCargoVal": flt(doc.value_of_goods),
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
-                    "EWAYBILL": ewaybill_data.get("ewaybill") if ewaybill_data else '',
-                    "EWB_EXP_DT": ewaybill_data.get("valid_upto") if ewaybill_data else '',
+                    "EWAYBILL": ewaybill_data.get("ewaybill") if ewaybill_data and ewaybill_data.get("ewaybill") else '',
+                    "EWB_EXP_DT": ewaybill_data.get("valid_upto") if ewaybill_data and ewaybill_data.get("valid_upto") else '',
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  
                     "goodsDesc": doc.description_of_content,
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
-                    "orderNo": delivery_note_name,
+                    "orderNo": order_no,
                     "prodServCode": "1",  
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,
@@ -374,7 +374,7 @@ def get_ewaybill_no(delivery_note):
         if ewaybill and validate_up_to:
             return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
         else:
-            return {}
+            return { "sales_invoice" : si_data[0].get("name")}
     else:
         dn_doc = frappe.get_doc("Delivery Note", delivery_note)
         si_reference = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
@@ -391,9 +391,9 @@ def get_ewaybill_no(delivery_note):
                 )
 
             if ewaybill and validate_up_to:
-                return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
+                return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : si_reference[0] }
             else:
-                return {}
+                return { "sales_invoice" : si_reference[0] }
 
 
 def log_api_interaction(interaction_type, request_data, response_data, status = None):
