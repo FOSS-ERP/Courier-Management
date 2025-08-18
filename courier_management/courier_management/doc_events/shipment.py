@@ -240,6 +240,9 @@ def booking_of_shipment(doc):
 
         ewaybill_data = get_ewaybill_no(delivery_note_name)
 
+        if not ewaybill_data and doc.value_of_goods > 50000:
+            frappe.throw(frappe._("An E-way Bill isn't generated. It's required for goods valued over 50,000."))
+
         # 2. Construct Payload
         payload = {
             "custCode": api_cred.customer_code,
@@ -256,8 +259,8 @@ def booking_of_shipment(doc):
                     "declCargoVal": flt(doc.value_of_goods),
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
-                    "EWAYBILL": ewaybill_data.get("ewaybill") or '',
-                    "EWB_EXP_DT": '',
+                    "EWAYBILL": ewaybill_data.get("ewaybill") if ewaybill_data else '',
+                    "EWB_EXP_DT": ewaybill_data.get("valid_upto") if ewaybill_data else '',
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  
                     "goodsDesc": doc.description_of_content,
