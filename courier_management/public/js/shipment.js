@@ -22,7 +22,7 @@ frappe.ui.form.on("Shipment", {
         }
         if(frm.doc.docstatus == 1 && frm.doc.courier_partner && !frm.doc.shipment_id){
             console.log("hello")
-            frm.add_custom_button(__("Forword Pickup Booking"),()=>{
+            frm.add_custom_button(__("Book Forword Pickup"),()=>{
                 console.log("Booling stafg")
                 frappe.call({
                     method: "courier_management.courier_management.doc_events.shipment.book_shipment",
