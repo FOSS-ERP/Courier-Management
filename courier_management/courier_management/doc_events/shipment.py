@@ -272,7 +272,7 @@ def booking_of_shipment(doc):
                     "receiverAdd4": address_doc.city,
                     "receiverCity": address_doc.state,
                     "receiverCode": "99999",  
-                    "receiverEmail": customer_email_id,
+                    "receiverEmail": customer_email_id.split(',')[0],
                     "ReceiverGSTINNo": address_doc.gstin,
                     "receiverMobileNo": customer_mobile_no.replace(" ", '').replace("-", ""),
                     "receiverName": frappe.db.get_value("Customer", doc.delivery_customer, "customer_name"),
