@@ -3,23 +3,31 @@ frappe.ui.form.on("Shipment", {
         if(!frm.doc.pickup_date){
             frm.set_value("pickup_date", frappe.datetime.get_today())
         }
-        if(frm.doc.docstatus && frm.doc.shipment_id){
-            frm.add_custom_button(__("Cancel Pickup"),()=>{
-                frappe.call({
-                    method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
-                    args:{
-                        doc : frm.doc
+        if (frm.doc.docstatus && frm.doc.shipment_id) {
+            frm.add_custom_button(__("Cancel Pickup"), () => {
+                frappe.confirm(
+                    __("Are you sure you want to cancel this pickup booking?"),
+                    function () {
+                        frappe.call({
+                            method: "courier_management.courier_management.doc_events.shipment.cancelle_pickup_booking",
+                            args: {
+                                doc: frm.doc
+                            },
+                            callback: (r) => {
+                                if (r.message) {
+                                    frm.reload_doc();
+                                    frm.refresh_fields();
+                                }
+                            }
+                        });
                     },
-                    callback:(r)=>{
-                        if(r.message){
-                            
-                            frm.reload_doc()
-                            frm.refresh_fields()
-                        }
+                    function () {
+                        frappe.show_alert({ message: __("Cancellation Aborted"), indicator: "orange" });
                     }
-                })
-            })
+                );
+            });
         }
+
         if(frm.doc.docstatus == 1 && frm.doc.courier_partner && !frm.doc.shipment_id){
             frm.add_custom_button(__("Book Forward Pickup"),()=>{
                 frappe.call({
@@ -111,7 +119,5 @@ frappe.ui.form.on("Shipment", {
             }
 
         }
-        
-         
     }
 })
