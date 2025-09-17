@@ -264,7 +264,7 @@ def booking_of_shipment(doc):
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
-                    "orderNo": order_no,
+                    "orderNo": order_no.split("/")[-1],
                     "prodServCode": "1",  
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,
