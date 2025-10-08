@@ -59,7 +59,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
 
     token_code = api_cred.get_password("token_code")
     endpoint_url = get_url(
-        f"https://pg-uat.gati.com/pickupservices/GKEPincodeserviceablity.jsp?reqid={token_code}&pincode={delivery_pincode}"
+        f"https://justi.gati.com/webservices/GKEPincodeserviceablity.jsp?reqid={token_code}&pincode={delivery_pincode}"
     )
 
     try:
@@ -111,7 +111,7 @@ def generate_a_docket_no(doc, api_cred=None):
     parcel_detail = [row for row in doc.get("shipment_parcel") if not row.get("parcel_series")]
 
     endpoint_url = get_url( 
-        f"https://pg-uat.gati.com/pickupservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
+        f"https://justi.gati.com/webservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
     )
     interaction_type = "Docket No"
     try:
@@ -158,7 +158,7 @@ def generate_a_parcel_series(doc, api_cred, DocketNO):
     delivery_pincode = get_delivery_pincode(doc)
 
     endpoint_url = get_url(
-        f"https://pg-uat.gati.com/pickupservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
+        f"https://justi.gati.com/webservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
     )
     interaction_type = "Parcel Series"
     try:
@@ -307,7 +307,7 @@ def booking_of_shipment(doc):
         payload["details"][0].update({"pkgDetails" : {"pkginfo": pkginfo}})
 
         # 3. API Call and Response Handling
-        endpoint_url = get_url("https://pg-uat.gati.com/pickupservices/GATIKWEJPICKUPLBH.jsp")
+        endpoint_url = get_url("https://justi.gati.com/webservices/GATIKWEJPICKUPLBH.jsp")
         headers = {"Content-Type": "application/json"}
 
         # Use a more descriptive variable name than `url`
@@ -394,6 +394,31 @@ def get_ewaybill_no(delivery_note):
                 return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : si_reference[0] }
             else:
                 return { "sales_invoice" : si_reference[0] }
+        else:
+            dn_doc = frappe.get_doc("Delivery Note", delivery_note)
+            so_reference = [ row.against_sales_order for row in dn_doc.items if row.against_sales_order ]
+            if so_reference:
+                si_data = frappe.db.sql(f"""
+                            Select parent
+                            From  `tabSales Invoice Item`
+                            Where sales_order = '{so_reference[0]}' and parenttype = "Sales Invoice"
+                """, as_dict = 1)
+
+                if si_data:
+                    ewaybill = frappe.db.get_value("Sales Invoice", si_data[0].get("parent"), "ewaybill")
+
+                    validate_up_to = frappe.db.get_value(
+                        "e-Waybill Log", {
+                            "reference_name" : si_data[0].get("parent"), 
+                            "is_cancelled":0
+                            },
+                            "valid_upto"
+                        )
+                    if ewaybill and validate_up_to:
+                        return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : si_data[0].get("parent") }
+                    else:
+                        return { "sales_invoice" : si_data[0].get("parent") }
+                
 
 
 def log_api_interaction(interaction_type, request_data, response_data, status = None):
@@ -426,7 +451,7 @@ def docket_printing(doc):
         frappe.throw(frappe._("Docket No is not generated"))
 
     endpoint_url = get_url(
-        f"https://pg-uat.gati.com/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
+        f"https://justi.gati.com/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
     )
     interaction_type = "Docket Printing"
     try:
@@ -447,7 +472,7 @@ def docket_printing(doc):
             )
         )
 
-    endpoint_url = f"https://pg-uat.gati.com/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
+    endpoint_url = f"https://justi.gati.com/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
     label = "Label Print"
     try:
         response = requests.get(endpoint_url, timeout=10)
@@ -536,7 +561,7 @@ def cancelle_pickup_booking(doc):
         }
     
     endpoint_url = get_url(
-        "https://pg-uat.gati.com/pickupservices/b2bCanPickup.jsp"
+        "https://justi.gati.com/webservices/b2bCanPickup.jsp"
     )
 
     interaction_type = "Cancelled Pickup Booking"
