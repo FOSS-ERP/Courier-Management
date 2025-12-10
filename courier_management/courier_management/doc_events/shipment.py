@@ -181,8 +181,8 @@ def generate_a_parcel_series(doc, api_cred, DocketNO):
                     i+=1
             log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Completed")
         else:
-            frappe.throw("Failed to package series no.")
             log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Failed")
+            frappe.throw("Failed to package series no.")
 
     except requests.exceptions.RequestException as e:
         frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
