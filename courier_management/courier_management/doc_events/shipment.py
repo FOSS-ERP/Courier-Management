@@ -309,15 +309,15 @@ def booking_of_shipment(doc):
         # 3. API Call and Response Handling
         endpoint_url = get_url("https://justi.gati.com/webservices/GATIKWEJPICKUPLBH.jsp")
         headers = {"Content-Type": "application/json"}
-
+        interaction_type = "Forword Pickup Booking"
+        log_api_interaction(interaction_type, str(payload), "Before Trigger the API", status = "Completed")
         # Use a more descriptive variable name than `url`
         response = requests.post(endpoint_url, json=payload, headers=headers, timeout=60)
         response.raise_for_status()
 
         service_details = response.json()
-        interaction_type = "Forword Pickup Booking"
         # Check for successful booking and update document
-        log_api_interaction(interaction_type, str(payload), str(service_details), status = "Completed")
+        
         if service_details.get("postedData") == 'successful':
             # The original code seems to have a typo, `postedData` is a string
             # and then it tries to get `postedData` from it again.
