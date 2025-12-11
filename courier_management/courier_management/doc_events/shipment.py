@@ -315,7 +315,7 @@ def booking_of_shipment(doc):
         response = requests.post(endpoint_url, json=payload, headers=headers, timeout=60)
         response.raise_for_status()
 
-        log_api_interaction(interaction_type, "After Response", response, status = "Completed")
+        frappe.log_error(str(response))
         service_details = response.json()
         # Check for successful booking and update document
         if service_details.get("postedData") == 'successful':
