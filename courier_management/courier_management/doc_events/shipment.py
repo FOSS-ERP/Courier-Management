@@ -321,6 +321,7 @@ def booking_of_shipment(doc):
         except ValueError:
             print("Invalid JSON received from server")
             print("RAW RESPONSE:", repr(response.text))
+            frappe.log_error("response error", response.text)
             service_details = None
         # Check for successful booking and update document
         if service_details and service_details.get("postedData") == 'successful':
