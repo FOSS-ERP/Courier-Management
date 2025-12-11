@@ -317,7 +317,7 @@ def booking_of_shipment(doc):
 
         service_details = response.json()
         # Check for successful booking and update document
-        
+        log_api_interaction(interaction_type, "After Response", service_details, status = "Completed")
         if service_details.get("postedData") == 'successful':
             # The original code seems to have a typo, `postedData` is a string
             # and then it tries to get `postedData` from it again.
