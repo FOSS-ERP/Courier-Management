@@ -391,7 +391,7 @@ def get_ewaybill_no(delivery_note):
                 )
 
             if ewaybill and validate_up_to:
-                return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : si_reference[0] }
+                return { "ewaybill" : ewaybill, "valid_upto":str(getdate(validate_up_to)) , "sales_invoice" : si_reference[0] }
             else:
                 return { "sales_invoice" : si_reference[0] }
         else:
