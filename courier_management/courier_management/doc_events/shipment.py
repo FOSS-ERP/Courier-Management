@@ -316,9 +316,14 @@ def booking_of_shipment(doc):
         response.raise_for_status()
 
         frappe.log_error(str(response))
-        service_details = response.json()
+        try:
+            service_details = response.json()
+        except ValueError:
+            print("Invalid JSON received from server")
+            print("RAW RESPONSE:", repr(response.text))
+            service_details = None
         # Check for successful booking and update document
-        if service_details.get("postedData") == 'successful':
+        if service_details and service_details.get("postedData") == 'successful':
             # The original code seems to have a typo, `postedData` is a string
             # and then it tries to get `postedData` from it again.
             # Assuming the response structure is something like:
