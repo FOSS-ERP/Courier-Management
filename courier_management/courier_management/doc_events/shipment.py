@@ -257,7 +257,7 @@ def booking_of_shipment(doc):
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
                     "EWAYBILL": ewaybill_data.get("ewaybill") if ewaybill_data and ewaybill_data.get("ewaybill") else '',
-                    "EWB_EXP_DT": str(getdate(ewaybill_data.get("valid_upto"))) if ewaybill_data and ewaybill_data.get("valid_upto") else '',
+                    "EWB_EXP_DT": str(getdate(ewaybill_data.get("valid_upto")).strftime('%d-%m-%Y')) if ewaybill_data and ewaybill_data.get("valid_upto") else '',
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  
                     "goodsDesc": doc.description_of_content,
