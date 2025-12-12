@@ -458,7 +458,7 @@ def docket_printing(doc):
         frappe.throw(frappe._("Docket No is not generated"))
 
     endpoint_url = get_url(
-        f"https://justi.gati.com/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
+        f"https://www.gati.com/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
     )
     interaction_type = "Docket Printing"
     try:
@@ -479,7 +479,7 @@ def docket_printing(doc):
             )
         )
 
-    endpoint_url = f"https://justi.gati.com/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
+    endpoint_url = f"https://www.gati.com/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
     label = "Label Print"
     try:
         response = requests.get(endpoint_url, timeout=10)
