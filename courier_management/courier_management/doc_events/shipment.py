@@ -50,6 +50,11 @@ def validate_pincode(doc, api_cred=None, api_call=False):
     if not api_cred:
         api_cred = get_api_credentials(doc)
 
+    if doc.enable_production_mode:
+        base_url = api_cred.get("prod_base_url")
+    else :
+        base_url = api_cred.get("uat_base_url")
+
     if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
@@ -59,7 +64,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
 
     token_code = api_cred.get_password("token_code")
     endpoint_url = get_url(
-        f"https://justi.gati.com/webservices/GKEPincodeserviceablity.jsp?reqid={token_code}&pincode={delivery_pincode}"
+        f"https://{base_url}/webservices/GKEPincodeserviceablity.jsp?reqid={token_code}&pincode={delivery_pincode}"
     )
 
     try:
@@ -105,13 +110,21 @@ def generate_a_docket_no(doc, api_cred=None):
         frappe.throw("Please Update a shipment parcel details")
     
     if not api_cred:
+        api_cred = get_api_credentials(doc)
+
+    if doc.enable_production_mode:
+        base_url = api_cred.get("prod_base_url")
+    else :
+        base_url = api_cred.get("uat_base_url")
+
+    if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
     
     parcel_detail = [row for row in doc.get("shipment_parcel") if not row.get("parcel_series")]
 
     endpoint_url = get_url( 
-        f"https://justi.gati.com/webservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
+        f"https://{base_url}/webservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
     )
     interaction_type = "Docket No"
     try:
@@ -140,6 +153,14 @@ def generate_a_parcel_series(doc, api_cred, DocketNO):
         return
 
     if not api_cred:
+        api_cred = get_api_credentials(doc)
+
+    if doc.enable_production_mode:
+        base_url = api_cred.get("prod_base_url")
+    else :
+        base_url = api_cred.get("uat_base_url")
+
+    if not api_cred:
         frappe.throw(frappe._("API credential is not updated"))
 
     if not doc.shipment_parcel:
@@ -158,7 +179,7 @@ def generate_a_parcel_series(doc, api_cred, DocketNO):
     delivery_pincode = get_delivery_pincode(doc)
 
     endpoint_url = get_url(
-        f"https://justi.gati.com/webservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
+        f"https://{base_url}/webservices/Custpkgseries.jsp?p1={DOCKET_NO}&p2={no_of_parcel}&p3={encode_customer_code}&p4={delivery_pincode}"
     )
     interaction_type = "Parcel Series"
     try:
@@ -205,6 +226,12 @@ def booking_of_shipment(doc):
             doc = frappe._dict(json.loads(doc))
 
         api_cred = get_api_credentials(doc)
+
+        if doc.enable_production_mode:
+            base_url = api_cred.get("prod_base_url")
+        else :
+            base_url = api_cred.get("uat_base_url")
+
         if not api_cred:
             frappe.throw(frappe._("API credentials not found for this document."))
 
@@ -307,7 +334,7 @@ def booking_of_shipment(doc):
         payload["details"][0].update({"pkgDetails" : {"pkginfo": pkginfo}})
 
         # 3. API Call and Response Handling
-        endpoint_url = get_url("https://justi.gati.com/webservices/GATIKWEJPICKUPLBH.jsp")
+        endpoint_url = get_url(f"https://{base_url}/webservices/GATIKWEJPICKUPLBH.jsp")
         headers = {"Content-Type": "application/json"}
         interaction_type = "Forword Pickup Booking"
         log_api_interaction(interaction_type, str(payload), "Before Trigger the API", status = "Completed")
@@ -453,12 +480,16 @@ def docket_printing(doc):
         return
 
     api_cred = get_api_credentials(doc)
+    if doc.enable_production_mode:
+        base_url = api_cred.get("prod_base_url_sticker")
+    else :
+        base_url = api_cred.get("uat_base_url_sticker")
 
     if not doc.awb_number:
         frappe.throw(frappe._("Docket No is not generated"))
 
     endpoint_url = get_url(
-        f"https://www.gati.com/Greport/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
+        f"https://{base_url}/Greport/InterfaceA4Print.jsp?p1={doc.awb_number}&p2={api_cred.customer_code}"
     )
     interaction_type = "Docket Printing"
     try:
@@ -479,7 +510,7 @@ def docket_printing(doc):
             )
         )
 
-    endpoint_url = f"https://www.gati.com/Greport/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
+    endpoint_url = f"https://{base_url}/Greport/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
     label = "Label Print"
     try:
         response = requests.get(endpoint_url, timeout=10)
@@ -553,6 +584,10 @@ def cancelle_pickup_booking(doc):
         return
 
     api_cred = get_api_credentials(doc)
+    if doc.enable_production_mode:
+        base_url = api_cred.get("prod_base_url")
+    else :
+        base_url = api_cred.get("uat_base_url")
 
     payload = {
         "pickupRequest": f"{getdate(doc.pickup_date).strftime('%d-%m-%Y')} {doc.pickup_from}",
@@ -568,7 +603,7 @@ def cancelle_pickup_booking(doc):
         }
     
     endpoint_url = get_url(
-        "https://justi.gati.com/webservices/b2bCanPickup.jsp"
+        f"https://{base_url}/webservices/b2bCanPickup.jsp"
     )
 
     interaction_type = "Cancelled Pickup Booking"
@@ -607,3 +642,62 @@ def before_cancel(self, method):
         return
     if not self.is_cancelled:
         frappe.throw("Shipment pickup service is not cancelled.")
+
+
+## track gati function
+@frappe.whitelist()
+def track_gati_awb(doc, api_cred=None, api_call=False):
+    if api_call:
+        doc = frappe._dict(json.loads(doc))
+    if not doc.courier_partner or doc.courier_partner != "GATI":
+        return
+    if doc.is_cancelled:
+        return
+    if not api_cred:
+        api_cred = get_api_credentials(doc)
+    if not api_cred:
+        frappe.throw(frappe._("API credentials is not updated"))
+
+    if doc.enable_production_mode:
+        base_url = api_cred.get("prod_base_url")
+    else :
+        base_url = api_cred.get("uat_base_url")
+    token_code = api_cred.get_password("token_code")
+
+    if not token_code:
+        frappe.throw(frappe._("GATI security token is missing"))
+    ## api url
+    endpoint_url = get_url(
+        f"https://{base_url}/pickupservices/GatiKWEDktJTrack.jsp"
+        f"?p1={doc.awb_number}&p2={token_code}"
+    )
+    
+    try:
+        response = requests.get(endpoint_url, timeout=15)
+        response.raise_for_status()
+        tracking_details = response.json()
+
+        gati_response = tracking_details.get("Gatiresponse", {})
+        dktinfo = gati_response.get("dktinfo", [])
+
+        if not dktinfo:
+            frappe.throw(frappe._("Invalid response received from GATI"))
+
+        docket = dktinfo[0]
+
+        # api-level error handling
+        if docket.get("errmsg"):
+            frappe.throw(frappe._(docket.get("errmsg")))
+        return tracking_details
+        
+    except requests.exceptions.RequestException as e:
+        frappe.log_error(
+            message = f"API request failed: {e}",
+            title= "GATI Tracking API Error"
+        )
+        frappe.throw(
+            frappe._(
+                "Could not fetch tracking details from GATI due to a connection error."
+                "Please try again later."
+            )
+        )

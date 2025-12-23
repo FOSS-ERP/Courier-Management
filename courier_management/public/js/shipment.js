@@ -119,5 +119,25 @@ frappe.ui.form.on("Shipment", {
             }
 
         }
+    },
+    onload: (frm) => {
+        if (!frm.doc.courier_partner || frm.doc.is_cancelled || !frm.doc.awb_number) 
+        {
+            return;
+        }
+        frappe.call({
+            method: "courier_management.courier_management.doc_events.shipment.track_gati_awb",
+            args: {
+                doc: JSON.stringify(frm.doc),
+                api_call: true
+            },
+            callback: function (r) {
+                if (!r.message) {
+                    console.warn("No response from GATI API");
+                    return;
+                }
+                console.log("GATI Tracking API Response:", r.message)
+            }
+        });
     }
-})
+});

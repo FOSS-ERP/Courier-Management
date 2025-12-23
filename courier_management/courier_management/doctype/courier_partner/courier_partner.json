@@ -9,7 +9,13 @@
   "courier_company_name",
   "encode_customer_code",
   "token_code",
-  "customer_code"
+  "customer_code",
+  "column_break_jvcf",
+  "prod_base_url",
+  "uat_base_url",
+  "uat_base_url_sticker",
+  "prod_base_url_sticker",
+  "enable_production_mode"
  ],
  "fields": [
   {
@@ -32,12 +38,42 @@
    "fieldtype": "Data",
    "label": "Courier Company Name",
    "unique": 1
+  },
+  {
+   "fieldname": "prod_base_url",
+   "fieldtype": "Data",
+   "label": "Prod Base URL"
+  },
+  {
+   "fieldname": "uat_base_url",
+   "fieldtype": "Data",
+   "label": "UAT BASE URL"
+  },
+  {
+   "fieldname": "prod_base_url_sticker",
+   "fieldtype": "Data",
+   "label": "Prod Base URL Sticker"
+  },
+  {
+   "fieldname": "uat_base_url_sticker",
+   "fieldtype": "Data",
+   "label": "UAT Base URL Sticker"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_production_mode",
+   "fieldtype": "Check",
+   "label": "Enable Production Mode"
+  },
+  {
+   "fieldname": "column_break_jvcf",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-01 10:17:31.264953",
+ "modified": "2025-12-23 16:13:19.048717",
  "modified_by": "Administrator",
  "module": "Courier Management",
  "name": "Courier Partner",
