@@ -50,7 +50,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
     if not api_cred:
         api_cred = get_api_credentials(doc)
 
-    if doc.enable_production_mode:
+    if api_cred.enable_production_mode:
         base_url = api_cred.get("prod_base_url")
     else :
         base_url = api_cred.get("uat_base_url")
@@ -112,7 +112,7 @@ def generate_a_docket_no(doc, api_cred=None):
     if not api_cred:
         api_cred = get_api_credentials(doc)
 
-    if doc.enable_production_mode:
+    if api_cred.enable_production_mode:
         base_url = api_cred.get("prod_base_url")
     else :
         base_url = api_cred.get("uat_base_url")
@@ -155,7 +155,7 @@ def generate_a_parcel_series(doc, api_cred, DocketNO):
     if not api_cred:
         api_cred = get_api_credentials(doc)
 
-    if doc.enable_production_mode:
+    if api_cred.enable_production_mode:
         base_url = api_cred.get("prod_base_url")
     else :
         base_url = api_cred.get("uat_base_url")
@@ -227,7 +227,7 @@ def booking_of_shipment(doc):
 
         api_cred = get_api_credentials(doc)
 
-        if doc.enable_production_mode:
+        if api_cred.enable_production_mode:
             base_url = api_cred.get("prod_base_url")
         else :
             base_url = api_cred.get("uat_base_url")
@@ -480,7 +480,7 @@ def docket_printing(doc):
         return
 
     api_cred = get_api_credentials(doc)
-    if doc.enable_production_mode:
+    if api_cred.enable_production_mode:
         base_url = api_cred.get("prod_base_url_sticker")
     else :
         base_url = api_cred.get("uat_base_url_sticker")
@@ -584,7 +584,7 @@ def cancelle_pickup_booking(doc):
         return
 
     api_cred = get_api_credentials(doc)
-    if doc.enable_production_mode:
+    if api_cred.enable_production_mode:
         base_url = api_cred.get("prod_base_url")
     else :
         base_url = api_cred.get("uat_base_url")
@@ -658,7 +658,7 @@ def track_gati_awb(doc, api_cred=None, api_call=False):
     if not api_cred:
         frappe.throw(frappe._("API credentials is not updated"))
 
-    if doc.enable_production_mode:
+    if api_cred.enable_production_mode:
         base_url = api_cred.get("prod_base_url")
     else :
         base_url = api_cred.get("uat_base_url")
