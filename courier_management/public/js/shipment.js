@@ -121,10 +121,10 @@ frappe.ui.form.on("Shipment", {
         }
     },
     onload: (frm) => {
-        if (!frm.doc.courier_partner || frm.doc.is_cancelled || !frm.doc.awb_number) 
-        {
+        if (!frm.doc.courier_partner || frm.doc.is_cancelled || !frm.doc.awb_number) {
             return;
         }
+
         frappe.call({
             method: "courier_management.courier_management.doc_events.shipment.track_gati_awb",
             args: {
@@ -132,12 +132,65 @@ frappe.ui.form.on("Shipment", {
                 api_call: true
             },
             callback: function (r) {
-                if (!r.message) {
-                    console.warn("No response from GATI API");
-                    return;
-                }
-                console.log("GATI Tracking API Response:", r.message)
+                if (!r.message) return;
+
+                let data = r.message?.Gatiresponse?.dktinfo?.[0];
+                if (!data) return;
+
+                // -------- HEADER DETAILS --------
+                let header_html = `
+                    <h4>Docket Details</h4>
+                    <table class="table table-bordered table-sm">
+                        <tr><th>Docket No</th><td>${data.DOCKET_NUMBER}</td></tr>
+                        <tr><th>Status</th><td>${data.DOCKET_STATUS}</td></tr>
+                        <tr><th>Consignor</th><td>${data.CONSIGNOR_NAME}</td></tr>
+                        <tr><th>Consignee</th><td>${data.CONSIGNEE_NAME}</td></tr>
+                        <tr><th>Booking Station</th><td>${data.BOOKING_STATION}</td></tr>
+                        <tr><th>Delivery Station</th><td>${data.DELIVERY_STATION}</td></tr>
+                        <tr><th>Booked On</th><td>${data.BOOKED_DATETIME}</td></tr>
+                        <tr><th>Weight</th><td>${data.ACTUAL_WEIGHT}</td></tr>
+                        <tr><th>Packages</th><td>${data.NO_OF_PKGS}</td></tr>
+                    </table>
+                `;
+
+                // -------- TRACKING HISTORY --------
+                let timeline_rows = "";
+                (data.TRANSIT_DTLS || []).forEach(row => {
+                    timeline_rows += `
+                        <tr>
+                            <td>${row.INTRANSIT_DATE}</td>
+                            <td>${row.INTRANSIT_TIME}</td>
+                            <td>${row.INTRANSIT_LOCATION}</td>
+                            <td>${row.INTRANSIT_STATUS}</td>
+                        </tr>
+                    `;
+                });
+
+                let transit_html = `
+                    <h4>Tracking History</h4>
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${timeline_rows}
+                        </tbody>
+                    </table>
+                `;
+
+                // -------- FINAL HTML --------
+                let final_html = header_html + transit_html;
+
+                // -------- SAVE IN FIELD --------
+                frm.set_value("tracking_details", final_html);
+                frm.refresh_field("tracking_details");
             }
         });
     }
+
 });

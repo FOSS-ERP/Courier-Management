@@ -38,6 +38,19 @@ def setup_custom_fields():
                 "fieldtype" : "Check",
                 "insert_after" : "courier_partner",
                 "read_only":1 
+            },
+            {
+                "fieldname" : "tracking_section_break",
+                "label" : "Tracking",
+                "fieldtype" : "Section Break",
+                "collapsible": 1,
+                "insert_after" : "locations"
+            },
+            {
+                "fieldname" : "tracking_details",
+                "label" : "",
+                "fieldtype" : "HTML",
+                "insert_after": "tracking_section_break"   
             }
         ],
         "Shipment Parcel": [
