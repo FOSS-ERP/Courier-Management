@@ -342,7 +342,6 @@ def booking_of_shipment(doc):
         response = requests.post(endpoint_url, json=payload, headers=headers, timeout=60)
         response.raise_for_status()
 
-        frappe.log_error(str(response))
         try:
             service_details = response.json()
         except ValueError:
@@ -649,7 +648,7 @@ def before_cancel(self, method):
 def track_gati_awb(doc, api_cred=None, api_call=False):
     if api_call:
         doc = frappe._dict(json.loads(doc))
-    if not doc.courier_partner or doc.courier_partner != "GATI":
+    if not doc.courier_partner:
         return
     if doc.is_cancelled:
         return
@@ -676,7 +675,10 @@ def track_gati_awb(doc, api_cred=None, api_call=False):
         response = requests.get(endpoint_url, timeout=15)
         response.raise_for_status()
         tracking_details = response.json()
-
+        interaction_type = "Completed"
+        request_data = endpoint_url
+        response_data = tracking_details
+        log_api_interaction(interaction_type, request_data, response_data, status = None)
         gati_response = tracking_details.get("Gatiresponse", {})
         dktinfo = gati_response.get("dktinfo", [])
 
