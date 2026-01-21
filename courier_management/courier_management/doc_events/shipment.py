@@ -280,7 +280,7 @@ def booking_of_shipment(doc):
                     "consignorGSTINNo": frappe.db.get_value("Address", doc.pickup_address_name, "gstin") or '',
                     "CustDeliveyDate": "",  # Empty string as per original code
                     "custVendCode": "BLRS001", 
-                    "declCargoVal": flt(doc.value_of_goods),
+                    "declCargoVal": flt(doc.invoice_value) or flt(doc.value_of_goods),
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
                     "EWAYBILL": ewaybill_data.get("ewaybill") if ewaybill_data and ewaybill_data.get("ewaybill") else '',
@@ -291,7 +291,7 @@ def booking_of_shipment(doc):
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
-                    "orderNo": order_no.split("/")[-1],
+                    "orderNo": doc.invoice_no or order_no.split("/")[-1],
                     "prodServCode": "1",  
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,

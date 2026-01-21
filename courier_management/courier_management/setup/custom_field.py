@@ -51,6 +51,27 @@ def setup_custom_fields():
                 "label" : "",
                 "fieldtype" : "HTML",
                 "insert_after": "tracking_section_break"   
+            },
+            {
+                "fieldname" : "invoice_value",
+                "label" : "Invoice Value",
+                "fieldtype" : "Currency",
+                "insert_after" : "shipment_details_section",
+                "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
+            },
+            {
+                "fieldname" : "invoice_no",
+                "label" : "Invoice Number",
+                "fieldtype" : "Data",
+                "insert_after" : "column_break_36",
+                "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
+            },
+            {
+                "fieldname" : "allow_new_invoice_values",
+                "label" : "Allow New Invoice Value",
+                "fieldtype" : "Check",
+                "insert_after" : "delivery_customer",
+                "fetch_from" : "delivery_customer.special_pricing_applicable_for_shipment"
             }
         ],
         "Shipment Parcel": [
@@ -60,6 +81,16 @@ def setup_custom_fields():
                 "fieldtype" : "Data",
                 "read_only" : 1,
                 "insert_after" : "count",
+                "no_copy":1  
+            }
+        ],
+        "Customer" : [
+            {
+                "fieldname" : "special_pricing_applicable_for_shipment",
+                "label" : "Special Pricing Applicable for Shipment",
+                "fieldtype" : "Check",
+                "read_only" : 0,
+                "insert_after" : "dn_required",
                 "no_copy":1  
             }
         ]
