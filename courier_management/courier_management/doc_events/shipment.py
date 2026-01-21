@@ -667,8 +667,7 @@ def track_gati_awb(doc, api_cred=None, api_call=False):
         frappe.throw(frappe._("GATI security token is missing"))
     ## api url
     endpoint_url = get_url(
-        f"https://{base_url}/pickupservices/GatiKWEDktJTrack.jsp"
-        f"?p1={doc.awb_number}&p2={token_code}"
+        f"https://{base_url}/webservices/GatiKWEDktJTrack.jsp?p1={doc.awb_number}&p2={token_code}"
     )
     
     try:
