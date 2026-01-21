@@ -187,7 +187,7 @@ frappe.ui.form.on("Shipment", {
                 let final_html = header_html + transit_html;
 
                 // -------- SAVE IN FIELD --------
-                frm.set_value("tracking_details", final_html);
+                frm.fields_dict.tracking_details.$wrapper.html(final_html);
                 frm.refresh_field("tracking_details");
             }
         });
