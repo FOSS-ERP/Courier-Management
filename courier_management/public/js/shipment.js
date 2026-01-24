@@ -191,6 +191,53 @@ frappe.ui.form.on("Shipment", {
                 frm.refresh_field("tracking_details");
             }
         });
+    },
+    update_new_delivery_note:(frm)=>{
+        let d = new frappe.ui.Dialog({
+            title: 'Select Delivery Note',
+            fields : [
+                {
+                    "fieldname" : "delivery_note",
+                    "label" : "Delivery Note",
+                    "options" : "Delivery Note",
+                    "reqd" :  1,
+                    "fieldtype" : "Link",
+                    get_query: function () {
+                        return {
+                            filters: {
+                                docstatus : 1,
+                                is_return : 0,
+                                customer : frm.doc.delivery_customer
+                             },
+                        }
+                    },
+                }
+            ],
+            size: 'small',
+            primary_action_label: 'Update',
+            primary_action(values) {
+                let data = d.get_values()
+                frappe.call({
+                    method:"courier_management.courier_management.doc_events.shipment.get_delevery_note_details",
+                    args: {
+                        delivery_note : data.delivery_note
+                    },
+                    callback:(r)=>{
+                        if(r.message){
+                            r.message.forEach(l=>{
+                                let child = frm.add_child("shipment_delivery_note")
+                                child.delivery_note = l.delivery_note
+                                child.grand_total = l.amount
+                            })
+                            d.hide()
+                            frm.refresh_field("shipment_delivery_note")
+                        }
+                    }
+                })
+                
+            }
+        })
+        d.show()
     }
 
 });

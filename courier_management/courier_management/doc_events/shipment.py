@@ -265,7 +265,7 @@ def booking_of_shipment(doc):
         if not delivery_note_name:
             frappe.throw(frappe._("Delivery Note is not linked to the shipment."))
 
-        ewaybill_data = get_ewaybill_no(delivery_note_name)
+        ewaybill_data = get_ewaybill_no(doc)
         order_no = ewaybill_data.get("sales_invoice") or delivery_note_name
         # 2. Construct Payload
         payload = {
@@ -291,7 +291,7 @@ def booking_of_shipment(doc):
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
-                    "orderNo": doc.invoice_no or order_no.split("/")[-1],
+                    "orderNo": doc.invoice_no or order_no,
                     "prodServCode": "1",  
                     "receiverAdd1": address_doc.address_title,
                     "receiverAdd2": address_doc.address_line1,
@@ -384,73 +384,128 @@ def booking_of_shipment(doc):
         frappe.throw(frappe._("An unexpected error occurred. Please contact support."))
 
 
-def get_ewaybill_no(delivery_note):
-    si_data = frappe.db.sql(f"""
-            Select si.name, si.ewaybill
-            From `tabSales Invoice Item` as sii
-            Left Join `tabSales Invoice` as si ON si.name = sii.parent
-            Where si.docstatus = 1 and sii.delivery_note = '{delivery_note}'
-            Group By si.name
-    """, as_dict=1)
+def get_ewaybill_no(doc):
+    si_details = []
+    for row in doc.shipment_delivery_note:
+        si_data = frappe.db.sql(f"""
+                Select si.name, si.ewaybill
+                From `tabSales Invoice Item` as sii
+                Left Join `tabSales Invoice` as si ON si.name = sii.parent
+                Where si.docstatus = 1 and sii.delivery_note = '{row.delivery_note}'
+                Group By si.name
+        """, as_dict=1)
+        
+        if si_data:
+            si_details += si_data
 
-    if si_data:
-        ewaybill = si_data[0].get("ewaybill")
+    if si_details:
+        ewaybill_list = [row.ewaybill for row in si_details]
+        invoice_no = [row.name.split("/")[-1] for row in si_details]
 
-        validate_up_to = frappe.db.get_value(
-            "e-Waybill Log", {
-                "reference_name" : si_data[0].get("name"), 
-                "is_cancelled":0
-                },
-                "valid_upto"
-            )
+        if len(invoice_no) > 3:
+            frappe.throw("No of Invoices are more then three is not allowed")
 
-        if ewaybill and validate_up_to:
-            return { "ewaybill" : ewaybill, "valid_upto":validate_up_to }
-        else:
-            return { "sales_invoice" : si_data[0].get("name")}
-    else:
-        dn_doc = frappe.get_doc("Delivery Note", delivery_note)
-        si_reference = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
-
-        if si_reference:
-            ewaybill = frappe.db.get_value("Sales Invoice", si_reference[0], "ewaybill")
-
+        invoice_no = ",".join(invoice_no)
+        
+        ewaybill = ",".join(ewaybill_list)
+        validate_up_to = None
+        if ewaybill:
             validate_up_to = frappe.db.get_value(
-                "e-Waybill Log", {
-                    "reference_name" : si_reference[0], 
-                    "is_cancelled":0
-                    },
-                    "valid_upto"
+                    "e-Waybill Log", ewaybill_list[0], "valid_upto"
                 )
 
-            if ewaybill and validate_up_to:
-                return { "ewaybill" : ewaybill, "valid_upto":str(getdate(validate_up_to)) , "sales_invoice" : si_reference[0] }
-            else:
-                return { "sales_invoice" : si_reference[0] }
+        if ewaybill and validate_up_to:
+            return { "ewaybill" : ewaybill, "valid_upto": validate_up_to }
         else:
-            dn_doc = frappe.get_doc("Delivery Note", delivery_note)
-            so_reference = [ row.against_sales_order for row in dn_doc.items if row.against_sales_order ]
-            if so_reference:
-                si_data = frappe.db.sql(f"""
-                            Select parent
-                            From  `tabSales Invoice Item`
-                            Where sales_order = '{so_reference[0]}' and parenttype = "Sales Invoice"
-                """, as_dict = 1)
+            return { "sales_invoice" : invoice_no}
+    else:
+        dn_pass = []
+        sales_invoice_list = []
+        for row in doc.shipment_delivery_note:
+            if not row.delivery_note in dn_pass:
+                dn_pass.append(row.delivery_note)
+            else:
+                continue
+            dn_doc = frappe.get_doc("Delivery Note", row.delivery_note)
+            si_references = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
+            sales_invoice_list = sales_invoice_list + si_references
 
-                if si_data:
-                    ewaybill = frappe.db.get_value("Sales Invoice", si_data[0].get("parent"), "ewaybill")
 
+        if sales_invoice_list:
+            if len(sales_invoice_list) > 0:
+                frappe.throw("No of Invoices are more then three is not allowed")
+
+            sales_invoice = [ row.split("/")[-1] for row in sales_invoice_list ]
+            sales_invoice = ",".join(sales_invoice)
+            validate_up_to = None
+            ewaybill = None
+            ewaybill_list = []
+            
+            for si in sales_invoice_list:
+                ewaybill = frappe.db.get_value("Sales Invoice", si, "ewaybill")
+                if ewaybill:
+                    ewaybill_list.append(ewaybill)
+
+            ewaybill = ",".join(ewaybill_list) 
+            if ewaybill:
+                validate_up_to = frappe.db.get_value(
+                    "e-Waybill Log", ewaybill_list[0], "valid_upto"
+                    )
+
+            if ewaybill and validate_up_to:
+                return { "ewaybill" : ewaybill, "valid_upto":str(getdate(validate_up_to)) , "sales_invoice" : sales_invoice }
+            else:
+                return { "sales_invoice" : sales_invoice }
+        else:
+            dn_pass = []
+            sales_invoice_list = []
+            ewaybill_list = []
+            validate_up_to = None
+            for row in doc.shipment_delivery_note:
+                if not row.delivery_note in dn_pass:
+                    dn_pass.append(row.delivery_note)
+                else:
+                    continue
+                dn_doc = frappe.get_doc("Delivery Note", row.delivery_note)
+
+                so_reference = [ row.against_sales_order for row in dn_doc.items if row.against_sales_order ]
+                so_reference = list(set(so_reference))
+                if so_reference:
+                    for row in so_reference:
+                        si_data = frappe.db.sql(f"""
+                                    Select parent
+                                    From  `tabSales Invoice Item`
+                                    Where sales_order = '{so_reference[0]}' and parenttype = "Sales Invoice"
+                        """, as_dict = 1)
+                        
+                        si_list = [
+                            row.parent for row in si_data
+                        ]
+
+                        sales_invoice_list += si_list
+            sales_invoice = ''
+            if sales_invoice_list:
+                sales_invoice = [ row.split("/")[-1] for row in sales_invoice_list ]
+                sales_invoice = ",".join(sales_invoice)
+                if len(sales_invoice_list) > 0:
+                    frappe.throw("No of Invoices are more then three is not allowed")
+                for si in sales_invoice_list:
+                    ewaybill = frappe.db.get_value("Sales Invoice", si, "ewaybill")
+                    if ewaybill:
+                        ewaybill_list.append(ewaybill)
+                
+                ewaybill = ",".join(ewaybill_list) 
+                if ewaybill_list:
                     validate_up_to = frappe.db.get_value(
-                        "e-Waybill Log", {
-                            "reference_name" : si_data[0].get("parent"), 
-                            "is_cancelled":0
-                            },
+                        "e-Waybill Log", 
+                            ewaybill_list[0],
                             "valid_upto"
                         )
-                    if ewaybill and validate_up_to:
-                        return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : si_data[0].get("parent") }
-                    else:
-                        return { "sales_invoice" : si_data[0].get("parent") }
+
+            if ewaybill and validate_up_to:
+                return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : sales_invoice }
+            else:
+                return { "sales_invoice" : si_data[0].get("parent") }
                 
 
 
@@ -702,3 +757,12 @@ def track_gati_awb(doc, api_cred=None, api_call=False):
                 "Please try again later."
             )
         )
+
+
+@frappe.whitelist()
+def get_delevery_note_details(delivery_note):
+    return frappe.db.sql(f"""
+                            Select parent as delivery_note, amount
+                            From `tabDelivery Note Item` as dni
+                            where parent = '{delivery_note}'
+                         """, as_dict=1)
