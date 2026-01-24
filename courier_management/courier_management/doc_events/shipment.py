@@ -386,6 +386,8 @@ def booking_of_shipment(doc):
 
 def get_ewaybill_no(doc):
     si_details = []
+    ewaybill = None
+    validate_up_to = None
     for row in doc.shipment_delivery_note:
         si_data = frappe.db.sql(f"""
                 Select si.name, si.ewaybill
@@ -399,20 +401,21 @@ def get_ewaybill_no(doc):
             si_details += si_data
 
     if si_details:
-        ewaybill_list = [row.ewaybill for row in si_details]
+        ewaybill_list = [ row.ewaybill for row in si_details if row.ewaybill ]
+
         invoice_no = list(set([row.name.split("/")[-1] for row in si_details]))
 
         if len(invoice_no) > 3:
             frappe.throw("No of Invoices are more then three is not allowed")
 
         invoice_no = ",".join(invoice_no)
-        
-        ewaybill = ",".join(ewaybill_list)
-        validate_up_to = None
-        if ewaybill:
-            validate_up_to = frappe.db.get_value(
-                    "e-Waybill Log", ewaybill_list[0], "valid_upto"
-                )
+        if ewaybill_list:
+            ewaybill = ",".join(ewaybill_list)
+            validate_up_to = None
+            if ewaybill:
+                validate_up_to = frappe.db.get_value(
+                        "e-Waybill Log", ewaybill_list[0], "valid_upto"
+                    )
 
         if ewaybill and validate_up_to:
             return { "ewaybill" : ewaybill, "valid_upto": validate_up_to }
