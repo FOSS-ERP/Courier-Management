@@ -60,7 +60,7 @@ def setup_custom_fields():
                 "insert_after" : "tracking_details"
             },
             {
-               "fieldname" : "inv_detail_section_break_start",
+                "fieldname" : "inv_detail_section_break_start",
                 "label" : "",
                 "fieldtype" : "Section Break",
                 "collapsible": 0,
@@ -74,17 +74,23 @@ def setup_custom_fields():
                 "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
             },
             {
-                "fieldname" : "invoice_no",
-                "label" : "Invoice Number",
-                "fieldtype" : "Data",
-                "insert_after" : "column_break_36",
-                "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
-            },
-            {
                 "fieldname" : "ewaybill_no",
                 "label" : "E-Way No",
                 "fieldtype" : "Data",
                 "insert_after" : "invoice_value",
+            },
+            {
+                "fieldname" : "column_break_3600000",
+                "label" : "",
+                "fieldtype" : "Column Break",
+                "insert_after" : "ewaybill_no",
+            },
+            {
+                "fieldname" : "invoice_no",
+                "label" : "Invoice Number",
+                "fieldtype" : "Data",
+                "insert_after" : "column_break_3600000",
+                "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
             },
             {
                 "fieldname" : "ewaybill_date",
