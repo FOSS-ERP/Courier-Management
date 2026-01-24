@@ -400,7 +400,7 @@ def get_ewaybill_no(doc):
 
     if si_details:
         ewaybill_list = [row.ewaybill for row in si_details]
-        invoice_no = [row.name.split("/")[-1] for row in si_details]
+        invoice_no = list(set([row.name.split("/")[-1] for row in si_details]))
 
         if len(invoice_no) > 3:
             frappe.throw("No of Invoices are more then three is not allowed")
