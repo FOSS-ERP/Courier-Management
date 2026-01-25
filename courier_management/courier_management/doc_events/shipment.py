@@ -384,131 +384,102 @@ def booking_of_shipment(doc):
         frappe.throw(frappe._("An unexpected error occurred. Please contact support."))
 
 
+from frappe.utils import getdate
+
+MAX_INVOICE_ALLOWED = 3
+
+
 def get_ewaybill_no(doc):
-    si_details = []
-    ewaybill = None
-    validate_up_to = None
+    sales_invoices = set()
+
+    # 1️⃣ From Sales Invoice Item → Delivery Note
     for row in doc.shipment_delivery_note:
-        si_data = frappe.db.sql(f"""
-                Select si.name, si.ewaybill
-                From `tabSales Invoice Item` as sii
-                Left Join `tabSales Invoice` as si ON si.name = sii.parent
-                Where si.docstatus = 1 and sii.delivery_note = '{row.delivery_note}'
-                Group By si.name
-        """, as_dict=1)
-        
-        if si_data:
-            si_details += si_data
+        si_data = frappe.db.sql("""
+            SELECT DISTINCT si.name
+            FROM `tabSales Invoice Item` sii
+            JOIN `tabSales Invoice` si ON si.name = sii.parent
+            WHERE si.docstatus = 1
+              AND sii.delivery_note = %s
+        """, row.delivery_note, as_dict=True)
 
-    if si_details:
-        ewaybill_list = [ row.ewaybill for row in si_details if row.ewaybill ]
+        sales_invoices.update(d.name for d in si_data)
 
-        invoice_no = list(set([row.name.split("/")[-1] for row in si_details]))
+    # 2️⃣ From Delivery Note → against_sales_invoice
+    if not sales_invoices:
+        for dn in get_unique_dns(doc):
+            dn_doc = frappe.get_doc("Delivery Note", dn)
+            sales_invoices.update(
+                row.against_sales_invoice
+                for row in dn_doc.items
+                if row.against_sales_invoice
+            )
 
-        if len(invoice_no) > 3:
-            frappe.throw("No of Invoices are more then three is not allowed")
+    # 3️⃣ From Delivery Note → Sales Order → Sales Invoice
+    if not sales_invoices:
+        for dn in get_unique_dns(doc):
+            dn_doc = frappe.get_doc("Delivery Note", dn)
 
-        invoice_no = ",".join(invoice_no)
-        if ewaybill_list:
-            ewaybill = ",".join(ewaybill_list)
-            validate_up_to = None
-            if ewaybill:
-                validate_up_to = frappe.db.get_value(
-                        "e-Waybill Log", ewaybill_list[0], "valid_upto"
-                    )
+            sales_orders = {
+                row.against_sales_order
+                for row in dn_doc.items
+                if row.against_sales_order
+            }
 
-        if ewaybill and validate_up_to:
-            return { "ewaybill" : ewaybill, "valid_upto": validate_up_to }
-        else:
-            return { "sales_invoice" : invoice_no}
-    else:
-        dn_pass = []
-        sales_invoice_list = []
-        for row in doc.shipment_delivery_note:
-            if not row.delivery_note in dn_pass:
-                dn_pass.append(row.delivery_note)
-            else:
+            if not sales_orders:
                 continue
-            dn_doc = frappe.get_doc("Delivery Note", row.delivery_note)
-            si_references = [ row.against_sales_invoice for row in dn_doc.items if row.against_sales_invoice ]
-            sales_invoice_list = sales_invoice_list + si_references
+
+            si_data = frappe.db.sql("""
+                SELECT DISTINCT parent
+                FROM `tabSales Invoice Item`
+                WHERE parenttype = 'Sales Invoice'
+                  AND sales_order IN %s
+            """, tuple(sales_orders), as_dict=True)
+
+            sales_invoices.update(d.parent for d in si_data)
+
+    # 🚫 No invoice found
+    if not sales_invoices:
+        return {}
+
+    # 🚨 Validation
+    if len(sales_invoices) > MAX_INVOICE_ALLOWED:
+        frappe.throw("No of Invoices more than three is not allowed")
+
+    return build_invoice_response(list(sales_invoices))
 
 
-        if sales_invoice_list:
-            if len(sales_invoice_list) > 0:
-                frappe.throw("No of Invoices are more then three is not allowed")
+# ------------------ HELPERS ------------------ #
 
-            sales_invoice = [ row.split("/")[-1] for row in sales_invoice_list ]
-            sales_invoice = ",".join(sales_invoice)
-            validate_up_to = None
-            ewaybill = None
-            ewaybill_list = []
-            
-            for si in sales_invoice_list:
-                ewaybill = frappe.db.get_value("Sales Invoice", si, "ewaybill")
-                if ewaybill:
-                    ewaybill_list.append(ewaybill)
+def build_invoice_response(sales_invoice_list):
+    invoice_display = []
+    ewaybill_list = []
 
-            ewaybill = ",".join(ewaybill_list) 
-            if ewaybill:
-                validate_up_to = frappe.db.get_value(
-                    "e-Waybill Log", ewaybill_list[0], "valid_upto"
-                    )
+    for si in sales_invoice_list:
+        invoice_display.append(si.split("/")[-1])
+        ewaybill = frappe.db.get_value("Sales Invoice", si, "ewaybill")
+        if ewaybill:
+            ewaybill_list.append(ewaybill)
 
-            if ewaybill and validate_up_to:
-                return { "ewaybill" : ewaybill, "valid_upto":str(getdate(validate_up_to)) , "sales_invoice" : sales_invoice }
-            else:
-                return { "sales_invoice" : sales_invoice }
-        else:
-            dn_pass = []
-            sales_invoice_list = []
-            ewaybill_list = []
-            validate_up_to = None
-            for row in doc.shipment_delivery_note:
-                if not row.delivery_note in dn_pass:
-                    dn_pass.append(row.delivery_note)
-                else:
-                    continue
-                dn_doc = frappe.get_doc("Delivery Note", row.delivery_note)
+    response = {
+        "sales_invoice": ",".join(invoice_display)
+    }
 
-                so_reference = [ row.against_sales_order for row in dn_doc.items if row.against_sales_order ]
-                so_reference = list(set(so_reference))
-                if so_reference:
-                    for row in so_reference:
-                        si_data = frappe.db.sql(f"""
-                                    Select parent
-                                    From  `tabSales Invoice Item`
-                                    Where sales_order = '{so_reference[0]}' and parenttype = "Sales Invoice"
-                        """, as_dict = 1)
-                        
-                        si_list = [
-                            row.parent for row in si_data
-                        ]
+    if ewaybill_list:
+        response["ewaybill"] = ",".join(ewaybill_list)
+        response["valid_upto"] = getdate(
+            frappe.db.get_value(
+                "e-Waybill Log",
+                ewaybill_list[0],
+                "valid_upto"
+            )
+        )
 
-                        sales_invoice_list += si_list
-            sales_invoice = ''
-            if sales_invoice_list:
-                sales_invoice = [ row.split("/")[-1] for row in sales_invoice_list ]
-                sales_invoice = ",".join(sales_invoice)
-                if len(sales_invoice_list) > 0:
-                    frappe.throw("No of Invoices are more then three is not allowed")
-                for si in sales_invoice_list:
-                    ewaybill = frappe.db.get_value("Sales Invoice", si, "ewaybill")
-                    if ewaybill:
-                        ewaybill_list.append(ewaybill)
-                
-                ewaybill = ",".join(ewaybill_list) 
-                if ewaybill_list:
-                    validate_up_to = frappe.db.get_value(
-                        "e-Waybill Log", 
-                            ewaybill_list[0],
-                            "valid_upto"
-                        )
+    return response
 
-            if ewaybill and validate_up_to:
-                return { "ewaybill" : ewaybill, "valid_upto":validate_up_to , "sales_invoice" : sales_invoice }
-            else:
-                return { "sales_invoice" : si_data[0].get("parent") }
+
+def get_unique_dns(doc):
+    return list({row.delivery_note for row in doc.shipment_delivery_note})
+
                 
 
 
