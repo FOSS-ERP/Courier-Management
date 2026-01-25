@@ -268,6 +268,23 @@ def booking_of_shipment(doc):
         ewaybill_data = get_ewaybill_no(doc)
         order_no = ewaybill_data.get("sales_invoice") or delivery_note_name
         # 2. Construct Payload
+
+        if doc.ewaybill_no:
+            ewaybill_no = doc.ewaybill_no
+        else:
+            if ewaybill_data and ewaybill_data.get("ewaybill"):
+                ewaybill_no = ewaybill_data.get("ewaybill")
+            else:
+                ewaybill_no = ''
+            
+        if doc.ewaybill_date:
+            ewaybill_date = str(getdate(doc.ewaybill_date).strftime('%d-%m-%Y'))
+        else:
+            if ewaybill_data and ewaybill_data.get("valid_upto"):
+                ewaybill_date = str(getdate(ewaybill_data.get("valid_upto")).strftime('%d-%m-%Y'))
+            else:
+                ewaybill_date = ''
+
         payload = {
             "custCode": api_cred.customer_code,
             "details": [
@@ -283,8 +300,8 @@ def booking_of_shipment(doc):
                     "declCargoVal": flt(doc.invoice_value) or flt(doc.value_of_goods),
                     "deliveryStn": "",  # Empty string
                     "docketNo": doc.awb_number,
-                    "EWAYBILL": ewaybill_data.get("ewaybill") if ewaybill_data and ewaybill_data.get("ewaybill") else '',
-                    "EWB_EXP_DT": str(getdate(ewaybill_data.get("valid_upto")).strftime('%d-%m-%Y')) if ewaybill_data and ewaybill_data.get("valid_upto") else '',
+                    "EWAYBILL": ewaybill_no,
+                    "EWB_EXP_DT": ewaybill_date,
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",  
                     "goodsDesc": doc.description_of_content,
@@ -439,6 +456,7 @@ def get_ewaybill_no(doc):
 
     # 🚫 No invoice found
     if not sales_invoices:
+        frappe.log_error("Courier Integration", "Sales Invoice Not Found")
         return {}
 
     # 🚨 Validation
