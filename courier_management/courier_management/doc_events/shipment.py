@@ -441,11 +441,11 @@ def get_ewaybill_no(doc):
     for dn in get_unique_dns(doc):
         dn_doc = frappe.get_doc("Delivery Note", dn)
 
-        sales_orders = {
+        sales_orders = [
             row.against_sales_order
             for row in dn_doc.items
             if row.against_sales_order
-        }
+        ]
 
         if not sales_orders:
             continue
