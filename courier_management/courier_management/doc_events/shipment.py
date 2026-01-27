@@ -455,7 +455,7 @@ def get_ewaybill_no(doc):
             FROM `tabSales Invoice Item`
             WHERE parenttype = 'Sales Invoice'
               AND sales_order IN %s
-        """, (tuple(sales_orders)), as_dict=True)
+        """, (tuple(sales_orders),), as_dict=True)
 
         sales_invoices.update(d.parent for d in si_data)
 
