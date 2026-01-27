@@ -397,7 +397,7 @@ def booking_of_shipment(doc):
         raise
     except Exception as e:
         # Catch any other unexpected errors
-        frappe.log_error(f"An unexpected error occurred during shipment booking: {e}", "Shipment Booking Error")
+        frappe.log_error("Shipment Booking Error", f"An unexpected error occurred during shipment booking: {e}")
         frappe.throw(frappe._("An unexpected error occurred. Please contact support."))
 
 
