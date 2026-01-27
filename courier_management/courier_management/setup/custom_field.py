@@ -71,7 +71,6 @@ def setup_custom_fields():
                 "label" : "Invoice Value",
                 "fieldtype" : "Currency",
                 "insert_after" : "inv_detail_section_break_start",
-                "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
             },
             {
                 "fieldname" : "ewaybill_no",
@@ -90,7 +89,6 @@ def setup_custom_fields():
                 "label" : "Invoice Number",
                 "fieldtype" : "Data",
                 "insert_after" : "column_break_3600000",
-                "depends_on" : "eval:doc.allow_new_invoice_values == 1;"
             },
             {
                 "fieldname" : "ewaybill_date",
