@@ -489,7 +489,7 @@ def build_invoice_response(sales_invoices):
             ewaybill_list.append(ewaybill)
 
     response = {
-        "sales_invoice": ",".join(sorted(invoice_display))
+        "sales_invoice": "X".join(sorted(invoice_display))
     }
 
     if ewaybill_list:
