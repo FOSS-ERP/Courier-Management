@@ -64,7 +64,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
 
     token_code = api_cred.get_password("token_code")
     endpoint_url = get_url(
-        f"https://{base_url}/webservices/GKEPincodeserviceablity.jsp?reqid={token_code}&pincode={delivery_pincode}"
+        f"https://{base_url}/webservices/GKEPincodeserviceability.jsp?reqid={token_code}&pincode={delivery_pincode}"
     )
 
     try:
@@ -127,26 +127,27 @@ def generate_a_docket_no(doc, api_cred=None):
         f"https://{base_url}/webservices/GKEdktdownloadjson.jsp?p1={api_cred.get_password('encode_customer_code')}"
     )
     interaction_type = "Docket No"
+    service_details = None
     try:
-        response = requests.post(endpoint_url, timeout=10)
+        response = requests.get(endpoint_url, timeout=10)
         response.raise_for_status()
         service_details = response.json()
-        
-        if service_details.get("docketNo"):
-            DocketNO = service_details.get("docketNo")
-            frappe.db.set_value("Shipment", doc.name, "awb_number", DocketNO)
-            return DocketNO
-        else:
-            frappe.throw("Failed to generate docket no.")
-        log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Completed")
-    except requests.exceptions.RequestException as e:
-        log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status = "Failed")
-        frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
-        frappe.throw(
-            frappe._(
-                "Failed to generate Docket No"
-            )
+
+        docket_no = service_details.get("docketNo")
+        if docket_no and docket_no != "No Dockets To Download":
+            frappe.db.set_value("Shipment", doc.name, "awb_number", docket_no)
+            log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status="Completed")
+            return docket_no
+        errmsg = service_details.get("errmsg") or (
+            "No dockets available for download. Please contact Gati SPOC for allocation."
+            if docket_no == "No Dockets To Download" else "Failed to generate docket no."
         )
+        log_api_interaction(interaction_type, str(endpoint_url), str(service_details), status="Failed")
+        frappe.throw(frappe._(errmsg))
+    except requests.exceptions.RequestException as e:
+        log_api_interaction(interaction_type, str(endpoint_url), str(service_details or str(e)), status="Failed")
+        frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
+        frappe.throw(frappe._("Failed to generate Docket No"))
     
 def generate_a_parcel_series(doc, api_cred, DocketNO):
     if not doc.courier_partner:
@@ -238,27 +239,39 @@ def booking_of_shipment(doc):
         # Fetch related documents
         try:
             address_doc = frappe.get_doc("Address", doc.delivery_address_name)
-            contact_doc = frappe.get_doc("Contact", doc.delivery_contact_name)
         except Exception as e:
-            frappe.throw(frappe._("Failed to fetch address or contact documents: {0}").format(e))
+            frappe.throw(frappe._("Failed to fetch delivery address: {0}").format(e))
 
-        # Get customer email and mobile, with robust fallbacks
-        customer_email_id = (
-            address_doc.email_id
-            or (contact_doc.email_ids[0].email_id if contact_doc.email_ids else '')
-        )
+        # Get customer email and mobile, with robust fallbacks (address first, then contact)
+        def _digits_only(s):
+            return "".join(c for c in (s or "") if c.isdigit())
+
+        customer_email_id = address_doc.email_id or ""
+        customer_mobile_no = _digits_only(address_doc.phone or getattr(address_doc, "mobile_no", None) or "")
+
+        if doc.delivery_contact_name:
+            try:
+                contact_doc = frappe.get_doc("Contact", doc.delivery_contact_name)
+                if not customer_email_id and contact_doc.email_ids:
+                    customer_email_id = contact_doc.email_ids[0].email_id or ""
+                if not customer_mobile_no:
+                    customer_mobile_no = _digits_only(
+                        contact_doc.phone or contact_doc.mobile_no or ""
+                    )
+                if not customer_mobile_no and contact_doc.phone_nos:
+                    customer_mobile_no = _digits_only(contact_doc.phone_nos[0].phone or "")
+            except Exception:
+                pass
+
+        # Indian mobile: use last 10 digits (handles +91 prefix)
+        if len(customer_mobile_no) > 10:
+            customer_mobile_no = customer_mobile_no[-10:]
+
         if not customer_email_id:
             frappe.throw(frappe._("Receiver email id is not updated in the Address or Contact."))
 
-        customer_mobile_no = (
-            address_doc.phone
-            or contact_doc.phone
-            or contact_doc.mobile_no
-            or (contact_doc.phone_nos[0].phone if contact_doc.phone_nos else '')
-        )
-        
-        if not customer_mobile_no:
-            frappe.throw(frappe._("Receiver mobile no is not updated in the Address or Contact."))
+        if not customer_mobile_no or len(customer_mobile_no) < 10:
+            frappe.throw(frappe._("Receiver mobile no (min 10 digits) is not updated in the Address or Contact."))
 
         # Get E-Waybill data
         delivery_note_name = doc.shipment_delivery_note[0].get('delivery_note')
@@ -285,49 +298,52 @@ def booking_of_shipment(doc):
             else:
                 ewaybill_date = ''
 
+        # Charged weight: use actual total weight (Gati may apply volumetric rules server-side)
+        charged_wt = max(flt(doc.total_weight), 1)
+
         payload = {
             "custCode": api_cred.customer_code,
             "details": [
                 {
                     "actualWt": flt(doc.total_weight),
-                    "bookingBasis": "2",  # Assuming this is a static value
-                    "chargedWt": 15,  # This seems like a static value, maybe it should be dynamic?
-                    "codAmt": "0",  # Assuming no COD for now
-                    "codInFavourOf": "G",  # Assuming this is a static value
+                    "bookingBasis": "2",
+                    "chargedWt": charged_wt,
+                    "codAmt": "0",
+                    "codInFavourOf": "G",
                     "consignorGSTINNo": frappe.db.get_value("Address", doc.pickup_address_name, "gstin") or '',
-                    "CustDeliveyDate": "",  # Empty string as per original code
-                    "custVendCode": "BLRS001", 
+                    "CustDeliveyDate": "",
+                    "custVendCode": "BLRS001",
                     "declCargoVal": flt(doc.invoice_value) or flt(doc.value_of_goods),
-                    "deliveryStn": "",  # Empty string
+                    "deliveryStn": "",
                     "docketNo": doc.awb_number,
                     "EWAYBILL": ewaybill_no,
                     "EWB_EXP_DT": ewaybill_date,
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
-                    "goodsCode": "302",  
-                    "goodsDesc": doc.description_of_content,
+                    "goodsCode": "302",
+                    "goodsDesc": doc.description_of_content or "as per invoice",
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
                     "orderNo": doc.invoice_no or order_no,
-                    "prodServCode": "1",  
-                    "receiverAdd1": address_doc.address_title,
-                    "receiverAdd2": address_doc.address_line1,
-                    "receiverAdd3": address_doc.address_line2,
-                    "receiverAdd4": address_doc.city,
-                    "receiverCity": address_doc.state,
-                    "receiverCode": "99999",  
-                    "receiverEmail": customer_email_id.split(',')[0],
-                    "ReceiverGSTINNo": address_doc.gstin,
-                    "receiverMobileNo": customer_mobile_no.replace(" ", '').replace("-", ""),
-                    "receiverName": frappe.db.get_value("Customer", doc.delivery_customer, "customer_name"),
-                    "receiverPhoneNo": customer_mobile_no.replace(" ", '').replace("-",""),
-                    "receiverPinCode": address_doc.pincode,
+                    "prodServCode": "1",
+                    "receiverAdd1": (address_doc.address_title or "")[:50],
+                    "receiverAdd2": (address_doc.address_line1 or "")[:50],
+                    "receiverAdd3": (address_doc.address_line2 or "")[:50],
+                    "receiverAdd4": (address_doc.city or "")[:50],
+                    "receiverCity": (address_doc.state or "")[:20],
+                    "receiverCode": "99999",
+                    "receiverEmail": (customer_email_id.split(',')[0] or "").strip()[:50],
+                    "ReceiverGSTINNo": address_doc.gstin or '',
+                    "receiverMobileNo": customer_mobile_no[:10],
+                    "receiverName": (frappe.db.get_value("Customer", doc.delivery_customer, "customer_name") or "")[:50],
+                    "receiverPhoneNo": customer_mobile_no[:10],
+                    "receiverPinCode": str(address_doc.pincode or "")[:6],
                     "shipperCode": api_cred.customer_code,
                     "toPkgNo": doc.shipment_parcel[-1].get("parcel_series"),
-                    "UOM": "CC"  
+                    "UOM": "CC"
                 }
             ],
-            "pickupRequest": f"{(getdate(doc.pickup_date).strftime('%d-%m-%Y'))} {str(doc.pickup_from)[0:8]}" # Assuming pickup_from is a field in doc
+            "pickupRequest": f"{(getdate(doc.pickup_date).strftime('%d-%m-%Y'))} {str(doc.pickup_from or '')[:8]}"
         }
 
 
@@ -362,31 +378,33 @@ def booking_of_shipment(doc):
         try:
             service_details = response.json()
         except ValueError:
-            print("Invalid JSON received from server")
-            print("RAW RESPONSE:", repr(response.text))
-            frappe.log_error("response error", response.text)
-            service_details = None
+            frappe.log_error(f"Invalid JSON from Gati API. Raw: {response.text[:500]}", "Gati Booking Response Error")
+            frappe.throw(frappe._("Invalid response from Gati API. Check Error Log for details."))
+
         # Check for successful booking and update document
-        if service_details and service_details.get("postedData") == 'successful':
-            # The original code seems to have a typo, `postedData` is a string
-            # and then it tries to get `postedData` from it again.
-            # Assuming the response structure is something like:
-            # {"status": "successful", "postedData": {"details": [...]}}
-            # Let's adjust this logic to be more robust.
+        if service_details.get("postedData") == 'successful':
             if service_details.get("details"):
                 for row in service_details["details"]:
-                    frappe.db.set_value("Shipment", doc.name, "shipment_id", row.get("orderNo"))
-            else:
-                frappe.throw(frappe._("Booking successful but 'details' not found in response."))
-
-            log_api_interaction(interaction_type, str(payload), service_details, status = "Completed")
+                    if row.get("orderNo"):
+                        frappe.db.set_value("Shipment", doc.name, "shipment_id", row.get("orderNo"))
+                        break
+            log_api_interaction(interaction_type, str(payload), service_details, status="Completed")
             frappe.msgprint(frappe._("Successfully Booked"))
             return True
-        else:
-            # Handle API-specific error messages if available
-            error_message = service_details.get("message") or service_details.get("error") or "Unknown error"
-            log_api_interaction(interaction_type, str(payload), service_details, status = "Failed")
-            frappe.throw(frappe._("Failed to book shipment: {0}").format(error_message))
+
+        # Extract error message from Gati API response
+        error_message = "Unknown error"
+        if service_details.get("details") and len(service_details["details"]) > 0:
+            first_detail = service_details["details"][0]
+            error_message = first_detail.get("errmsg") or error_message
+        error_message = (
+            service_details.get("errmsg")
+            or service_details.get("message")
+            or service_details.get("error")
+            or error_message
+        )
+        log_api_interaction(interaction_type, str(payload), service_details, status="Failed")
+        frappe.throw(frappe._("Failed to book shipment: {0}").format(error_message))
 
     except requests.exceptions.RequestException as e:
         # Handle network or HTTP errors gracefully
@@ -555,10 +573,10 @@ def docket_printing(doc):
         response.raise_for_status()
         pdf_content = response.content
         filename = "{0}-docket.pdf".format(doc.name)
-        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
+        log_api_interaction(interaction_type, str(endpoint_url), f"Status: {response.status_code}", status="Completed")
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
     except requests.exceptions.RequestException as e:
-        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Failed")
+        log_api_interaction(interaction_type, str(endpoint_url), str(e), status="Failed")
         frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
         frappe.throw(
             frappe._(
@@ -566,7 +584,7 @@ def docket_printing(doc):
             )
         )
 
-    endpoint_url = f"https://{base_url}/Greport/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3"
+    endpoint_url = get_url(f"https://{base_url}/Greport/GATICOM_CUSTPKG.jsp?p1=3&p={doc.awb_number}&p3=3")
     label = "Label Print"
     try:
         response = requests.get(endpoint_url, timeout=10)
@@ -574,12 +592,11 @@ def docket_printing(doc):
         pdf_content = response.content
 
         filename = "{0}-label.pdf".format(doc.name)
-        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Completed")
-        
+        log_api_interaction(interaction_type, str(endpoint_url), f"Status: {response.status_code}", status="Completed")
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
         return True
     except requests.exceptions.RequestException as e:
-        log_api_interaction(interaction_type, str(endpoint_url), str(response), status = "Failed")
+        log_api_interaction(interaction_type, str(endpoint_url), str(e), status="Failed")
         frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
         frappe.throw(
             frappe._(
