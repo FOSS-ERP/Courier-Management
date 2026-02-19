@@ -79,7 +79,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
         
         return service_details
     except requests.exceptions.RequestException as e:
-        frappe.log_error(f"API request failed: {e}", "Pincode Validation Error")
+        frappe.log_error(title="Pincode Validation Error", message=str(e))
         frappe.throw(
             frappe._(
                 f"Could not validate pincode {delivery_pincode} due to a connection error. Please try again later."
@@ -146,7 +146,7 @@ def generate_a_docket_no(doc, api_cred=None):
         frappe.throw(frappe._(errmsg))
     except requests.exceptions.RequestException as e:
         log_api_interaction(interaction_type, str(endpoint_url), str(service_details or str(e)), status="Failed")
-        frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
+        frappe.log_error(title="Docket Generation Error", message=str(e))
         frappe.throw(frappe._("Failed to generate Docket No"))
     
 def generate_a_parcel_series(doc, api_cred, DocketNO):
@@ -207,12 +207,8 @@ def generate_a_parcel_series(doc, api_cred, DocketNO):
             frappe.throw("Failed to package series no.")
 
     except requests.exceptions.RequestException as e:
-        frappe.log_error(f"API request failed: {e}", "DocketNO Generation Error")
-        frappe.throw(
-            frappe._(
-                "Failed to generate Docket No"
-            )
-        )
+        frappe.log_error(title="Parcel Series Error", message=str(e))
+        frappe.throw(frappe._("Failed to generate Docket No"))
 
 @frappe.whitelist()
 def booking_of_shipment(doc):
@@ -378,7 +374,7 @@ def booking_of_shipment(doc):
         try:
             service_details = response.json()
         except ValueError:
-            frappe.log_error(f"Invalid JSON from Gati API. Raw: {response.text[:500]}", "Gati Booking Response Error")
+            frappe.log_error(title="Gati Booking Response Error", message=f"Invalid JSON. Raw: {response.text[:500]}")
             frappe.throw(frappe._("Invalid response from Gati API. Check Error Log for details."))
 
         # Check for successful booking and update document
@@ -408,14 +404,14 @@ def booking_of_shipment(doc):
 
     except requests.exceptions.RequestException as e:
         # Handle network or HTTP errors gracefully
-        frappe.log_error(f"Gati API booking failed: {e}", "Gati API Error")
+        frappe.log_error(title="Gati API Error", message=str(e))
         frappe.throw(frappe._("Failed to connect to the Gati booking service. Please try again later."))
     except frappe.ValidationError:
         # Re-raise Frappe validation errors
         raise
     except Exception as e:
         # Catch any other unexpected errors
-        frappe.log_error("Shipment Booking Error", f"An unexpected error occurred during shipment booking: {e}")
+        frappe.log_error(title="Shipment Booking Error", message=str(e))
         frappe.throw(frappe._("An unexpected error occurred. Please contact support."))
 
 
@@ -577,7 +573,7 @@ def docket_printing(doc):
         save_pdf_to_frappe(pdf_content, filename, doctype="Shipment", docname=doc.name)
     except requests.exceptions.RequestException as e:
         log_api_interaction(interaction_type, str(endpoint_url), str(e), status="Failed")
-        frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
+        frappe.log_error(title="PDF Generation Error", message=str(e))
         frappe.throw(
             frappe._(
                 "Failed to generate PDF"
@@ -597,7 +593,7 @@ def docket_printing(doc):
         return True
     except requests.exceptions.RequestException as e:
         log_api_interaction(interaction_type, str(endpoint_url), str(e), status="Failed")
-        frappe.log_error(f"API request failed: {e}", "PDF Generation Error")
+        frappe.log_error(title="PDF Generation Error", message=str(e))
         frappe.throw(
             frappe._(
                 "Failed to generate PDF"
@@ -623,7 +619,7 @@ def save_pdf_to_frappe(pdf_content, filename, doctype=None, docname=None, folder
         frappe.msgprint(f"PDF '{filename}' saved successfully.")
 
     except Exception as e:
-        frappe.log_error(f"Failed to save PDF to Frappe File: {e}", "File Save Error")
+        frappe.log_error(title="File Save Error", message=str(e))
         frappe.db.rollback()
         return None
 
@@ -701,7 +697,7 @@ def cancelle_pickup_booking(doc):
 
         return True
     except requests.exceptions.RequestException as e:
-        frappe.log_error(f"API request failed: {e}", "Booking calcellation failed")
+        frappe.log_error(title="Booking Cancellation Error", message=str(e))
         frappe.throw(
             frappe._(
                 "Failed to calcelled"
