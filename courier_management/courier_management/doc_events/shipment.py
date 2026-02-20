@@ -71,7 +71,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
         response = requests.post(endpoint_url, timeout=10)
         response.raise_for_status()
         service_details = response.json()
-        
+        frappe.log_error("Pincode", service_details)
         if service_details.get("result") != "successful":
             frappe.throw(
                 frappe._(f"Service is unavailable at pincode {frappe.bold(delivery_pincode)}")
