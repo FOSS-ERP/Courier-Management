@@ -64,7 +64,7 @@ def validate_pincode(doc, api_cred=None, api_call=False):
 
     token_code = api_cred.get_password("token_code")
     endpoint_url = get_url(
-        f"https://{base_url}/webservices/GKEPincodeserviceability.jsp?reqid={token_code}&pincode={delivery_pincode}"
+        f"https://{base_url}/webservices/GKEPincodeserviceablity.jsp?reqid={token_code}&pincode={delivery_pincode}"
     )
 
     try:
@@ -129,7 +129,7 @@ def generate_a_docket_no(doc, api_cred=None):
     interaction_type = "Docket No"
     service_details = None
     try:
-        response = requests.get(endpoint_url, timeout=10)
+        response = requests.post(endpoint_url, timeout=10)
         response.raise_for_status()
         service_details = response.json()
 
@@ -303,7 +303,7 @@ def booking_of_shipment(doc):
                 {
                     "actualWt": flt(doc.total_weight),
                     "bookingBasis": "2",
-                    "chargedWt": charged_wt,
+                    "chargedWt": 15,
                     "codAmt": "0",
                     "codInFavourOf": "G",
                     "consignorGSTINNo": frappe.db.get_value("Address", doc.pickup_address_name, "gstin") or '',
@@ -316,24 +316,24 @@ def booking_of_shipment(doc):
                     "EWB_EXP_DT": ewaybill_date,
                     "fromPkgNo": doc.shipment_parcel[0].get("parcel_series"),
                     "goodsCode": "302",
-                    "goodsDesc": doc.description_of_content or "as per invoice",
+                    "goodsDesc": doc.description_of_content,
                     "instructions": "",
                     "locationCode": "",
                     "noOfPkgs": len(doc.shipment_parcel),
                     "orderNo": doc.invoice_no or order_no,
                     "prodServCode": "1",
-                    "receiverAdd1": (address_doc.address_title or "")[:50],
-                    "receiverAdd2": (address_doc.address_line1 or "")[:50],
-                    "receiverAdd3": (address_doc.address_line2 or "")[:50],
-                    "receiverAdd4": (address_doc.city or "")[:50],
-                    "receiverCity": (address_doc.state or "")[:20],
+                    "receiverAdd1": address_doc.address_title or "",
+                    "receiverAdd2": address_doc.address_line1 or "",
+                    "receiverAdd3": address_doc.address_line2 or "",
+                    "receiverAdd4": address_doc.city or "",
+                    "receiverCity": address_doc.state or "",
                     "receiverCode": "99999",
-                    "receiverEmail": (customer_email_id.split(',')[0] or "").strip()[:50],
+                    "receiverEmail": (customer_email_id.split(',')[0] or "").strip(),
                     "ReceiverGSTINNo": address_doc.gstin or '',
-                    "receiverMobileNo": customer_mobile_no[:10],
-                    "receiverName": (frappe.db.get_value("Customer", doc.delivery_customer, "customer_name") or "")[:50],
+                    "receiverMobileNo": customer_mobile_no,
+                    "receiverName": (frappe.db.get_value("Customer", doc.delivery_customer, "customer_name") or ""),
                     "receiverPhoneNo": customer_mobile_no[:10],
-                    "receiverPinCode": str(address_doc.pincode or "")[:6],
+                    "receiverPinCode": str(address_doc.pincode or ""),
                     "shipperCode": api_cred.customer_code,
                     "toPkgNo": doc.shipment_parcel[-1].get("parcel_series"),
                     "UOM": "CC"
