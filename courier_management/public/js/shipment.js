@@ -192,6 +192,17 @@ frappe.ui.form.on("Shipment", {
             }
         });
     },
+    delivery_contact_name: (frm) => {
+        if (!frm.doc.delivery_contact_name) {
+            frm.set_value("customer_email", "");
+            return;
+        }
+        frappe.db.get_doc("Contact", frm.doc.delivery_contact_name).then(contact => {
+            const email = (contact.email_ids || []).find(e => e.is_primary) || contact.email_ids?.[0];
+            frm.set_value("customer_email", email ? email.email_id : "");
+        });
+    },
+
     update_new_delivery_note:(frm)=>{
         let d = new frappe.ui.Dialog({
             title: 'Select Delivery Note',

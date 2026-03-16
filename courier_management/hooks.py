@@ -148,23 +148,11 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"courier_management.tasks.all"
-# 	],
-# 	"daily": [
-# 		"courier_management.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"courier_management.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"courier_management.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"courier_management.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"hourly": [
+		"courier_management.courier_management.tasks.hourly"
+	],
+}
 
 # Testing
 # -------

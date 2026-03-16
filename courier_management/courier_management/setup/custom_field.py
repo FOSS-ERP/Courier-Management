@@ -115,6 +115,41 @@ def setup_custom_fields():
                 "label" : "Update New Delivery Note",
                 "fieldtype" : "Button",
                 "insert_after" : "shipment_delivery_note",
+            },
+            {
+                "fieldname" : "customer_email",
+                "label" : "Customer Email",
+                "fieldtype" : "Data",
+                "options" : "Email",
+                "insert_after" : "delivery_contact_name",
+                "no_copy" : 1
+            },
+            {
+                "fieldname" : "delivery_status",
+                "label" : "Delivery Status",
+                "fieldtype" : "Select",
+                "options" : "\nOut From Origin\nDelivered",
+                "insert_after" : "is_cancelled",
+                "read_only" : 1,
+                "no_copy" : 1
+            },
+            {
+                "fieldname" : "out_from_origin_email_sent",
+                "label" : "Out From Origin Email Sent",
+                "fieldtype" : "Check",
+                "insert_after" : "delivery_status",
+                "read_only" : 1,
+                "hidden" : 1,
+                "no_copy" : 1
+            },
+            {
+                "fieldname" : "delivered_email_sent",
+                "label" : "Delivered Email Sent",
+                "fieldtype" : "Check",
+                "insert_after" : "out_from_origin_email_sent",
+                "read_only" : 1,
+                "hidden" : 1,
+                "no_copy" : 1
             }
         ],
         "Shipment Parcel": [
