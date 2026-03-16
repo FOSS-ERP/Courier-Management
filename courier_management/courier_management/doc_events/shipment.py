@@ -14,6 +14,36 @@ def validate(self, method):
     api_cred = get_api_credentials(self)
     validate_pickup_date(self)
     validate_pincode(self, api_cred)
+    validate_delivery_note_not_in_active_shipment(self)
+
+
+def validate_delivery_note_not_in_active_shipment(self):
+    for row in self.shipment_delivery_note:
+        if not row.delivery_note:
+            continue
+
+        existing = frappe.db.sql("""
+            SELECT sdn.parent
+            FROM `tabShipment Delivery Note` sdn
+            INNER JOIN `tabShipment` s ON s.name = sdn.parent
+            WHERE sdn.delivery_note = %s
+              AND s.is_cancelled = 0
+              AND s.docstatus != 2
+              AND s.name != %s
+            LIMIT 1
+        """, (row.delivery_note, self.name or ""), as_dict=True)
+
+        if existing:
+            frappe.throw(
+                frappe._(
+                    "Delivery Note {0} is already linked to active Shipment {1}. "
+                    "Cancel that shipment before creating a new one."
+                ).format(
+                    frappe.bold(row.delivery_note),
+                    frappe.bold(existing[0].parent)
+                )
+            )
+
 
 def validate_pickup_date(self):
     date_time = f"{self.pickup_date} {self.pickup_from}"
