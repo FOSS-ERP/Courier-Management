@@ -89,4 +89,5 @@ def _trigger_notification(doc, notification_name):
         return
 
     notification = frappe.get_doc("Notification", notification_name)
-    notification.send(doc)
+    if notification.enabled:
+        notification.send(doc)
